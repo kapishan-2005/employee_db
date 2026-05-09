@@ -1,0 +1,257 @@
+import { useCallback } from 'react';
+import { usePermissions } from '../hooks/usePermissions';
+import { useFetch } from '../hooks/useFetch';
+import dashboardService from '../services/dashboardService';
+import PageHeader from '../components/common/PageHeader';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import DashboardCard from '../components/dashboard/DashboardCard';
+import ActivityList from '../components/dashboard/ActivityList';
+import QuickActions from '../components/dashboard/QuickActions';
+
+const DashboardPage = () => {
+  const permissions = usePermissions();
+
+  const fetchOverview = useCallback(async () => {
+    const response = await dashboardService.getOverview();
+    return response;
+  }, []);
+
+  const fetchActivity = useCallback(async () => {
+    const response = await dashboardService.getRecentActivity(10);
+    return response;
+  }, []);
+
+  const { data: overview, loading: overviewLoading } = useFetch(fetchOverview);
+  const { data: activity, loading: activityLoading } = useFetch(fetchActivity);
+
+  if (overviewLoading || activityLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <LoadingSpinner message="Loading dashboard..." />
+      </div>
+    );
+  }
+
+  // Employee Dashboard
+  if (permissions.isEmployee && overview?.role === 'employee') {
+    const { employee, stats, today } = overview.data || {};
+    const recentAttendance = activity?.data?.recentAttendance || [];
+
+    // Safety check for employee data
+    if (!employee) {
+      return (
+        <div className="max-w-7xl mx-auto px-6 py-10">
+          <LoadingSpinner message="Loading employee data..." />
+        </div>
+      );
+    }
+
+    const attendanceItems = recentAttendance.map((record) => ({
+      icon: '📅',
+      title: new Date(record.date).toLocaleDateString(),
+      subtitle: `${record.check_in ? record.check_in.substring(0, 5) : '—'} - ${record.check_out ? record.check_out.substring(0, 5) : '—'}`,
+      badge: record.status,
+      badgeClass:
+        record.status === 'present'
+          ? 'bg-emerald-500/15 text-emerald-300'
+          : record.status === 'late'
+          ? 'bg-orange-500/15 text-orange-300'
+          : 'bg-red-500/15 text-red-300',
+    }));
+
+    const quickActions = [
+      { label: 'Check In', icon: '→', variant: 'success', path: '/attendance' },
+      { label: 'Check Out', icon: '←', variant: 'warning', path: '/attendance' },
+      { label: 'View Attendance', icon: '📋', variant: 'primary', path: '/attendance' },
+      { label: 'My Profile', icon: '👤', variant: 'secondary', path: '/employees' },
+    ];
+
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <PageHeader title="My Dashboard" subtitle="Welcome back" />
+
+        <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+          <p className="text-white font-medium">{employee.name}</p>
+          <p className="text-white/60 text-sm">{employee.course} • {employee.roll_no}</p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <DashboardCard
+            title="Total Days"
+            value={stats?.totalDays || 0}
+            icon="📊"
+            color="indigo"
+          />
+          <DashboardCard
+            title="Present"
+            value={stats?.presentDays || 0}
+            icon="✓"
+            color="emerald"
+          />
+          <DashboardCard
+            title="Late"
+            value={stats?.lateDays || 0}
+            icon="⏰"
+            color="orange"
+          />
+          <DashboardCard
+            title="Absent"
+            value={stats?.absentDays || 0}
+            icon="✕"
+            color="red"
+          />
+        </div>
+
+        {today && (
+          <div className="mb-8 p-6 rounded-2xl border border-white/8 bg-white/[0.02]">
+            <h3 className="text-lg font-semibold text-white mb-3">Today's Status</h3>
+            <div className="flex items-center gap-6">
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-1">Check In</p>
+                <p className="text-xl font-bold text-white">
+                  {today.check_in ? today.check_in.substring(0, 5) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-1">Check Out</p>
+                <p className="text-xl font-bold text-white">
+                  {today.check_out ? today.check_out.substring(0, 5) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-white/40 uppercase tracking-widest mb-1">Status</p>
+                <span
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${
+                    today.status === 'present'
+                      ? 'bg-emerald-500/15 text-emerald-300'
+                      : today.status === 'late'
+                      ? 'bg-orange-500/15 text-orange-300'
+                      : 'bg-red-500/15 text-red-300'
+                  }`}
+                >
+                  {today.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ActivityList
+            title="Recent Attendance"
+            items={attendanceItems}
+            emptyMessage="No attendance records yet"
+          />
+          <QuickActions actions={quickActions} />
+        </div>
+      </div>
+    );
+  }
+
+  // Admin/Manager Dashboard
+  const overviewData = overview?.data || {};
+  const activityData = activity?.data || {};
+
+  const recentEmployees = activityData.recentEmployees || [];
+  const recentAttendance = activityData.recentAttendance || [];
+  const recentDepartments = activityData.recentDepartments || [];
+
+  const employeeItems = recentEmployees.map((emp) => ({
+    icon: '👤',
+    title: emp.name,
+    subtitle: `${emp.course} • ${emp.roll_no}`,
+    badge: 'New',
+    badgeClass: 'bg-indigo-500/15 text-indigo-300',
+  }));
+
+  const attendanceItems = recentAttendance.map((record) => ({
+    icon: record.check_out ? '←' : '→',
+    title: record.employee_name,
+    subtitle: `${record.check_in ? record.check_in.substring(0, 5) : '—'} ${
+      record.check_out ? `- ${record.check_out.substring(0, 5)}` : ''
+    }`,
+    badge: record.status,
+    badgeClass:
+      record.status === 'present'
+        ? 'bg-emerald-500/15 text-emerald-300'
+        : record.status === 'late'
+        ? 'bg-orange-500/15 text-orange-300'
+        : 'bg-red-500/15 text-red-300',
+  }));
+
+  const departmentItems = recentDepartments.map((dept) => ({
+    icon: '🏢',
+    title: dept.name,
+    subtitle: dept.description || 'No description',
+    badge: dept.is_active ? 'Active' : 'Inactive',
+    badgeClass: dept.is_active
+      ? 'bg-emerald-500/15 text-emerald-300'
+      : 'bg-red-500/15 text-red-300',
+  }));
+
+  const quickActions = [
+    { label: 'Add Employee', icon: '+', variant: 'primary', path: '/employees' },
+    { label: 'Add Department', icon: '+', variant: 'primary', path: '/departments' },
+    { label: 'Check In', icon: '→', variant: 'success', path: '/attendance' },
+    { label: 'View Reports', icon: '📊', variant: 'secondary', path: '/attendance' },
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-10">
+      <PageHeader title="Dashboard" subtitle="Overview" />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <DashboardCard
+          title="Total Employees"
+          value={overviewData.totalEmployees || 0}
+          icon="👥"
+          color="indigo"
+        />
+        <DashboardCard
+          title="Departments"
+          value={overviewData.totalDepartments || 0}
+          icon="🏢"
+          color="violet"
+        />
+        <DashboardCard
+          title="Present Today"
+          value={overviewData.presentToday || 0}
+          subtitle={`${overviewData.attendanceToday || 0} total`}
+          icon="✓"
+          color="emerald"
+        />
+        <DashboardCard
+          title="Late Today"
+          value={overviewData.lateToday || 0}
+          subtitle={`${overviewData.absentToday || 0} absent`}
+          icon="⏰"
+          color="orange"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <ActivityList
+          title="Recent Employees"
+          items={employeeItems.slice(0, 5)}
+          emptyMessage="No recent employees"
+        />
+        <ActivityList
+          title="Today's Attendance"
+          items={attendanceItems.slice(0, 5)}
+          emptyMessage="No attendance records today"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ActivityList
+          title="Recent Departments"
+          items={departmentItems.slice(0, 5)}
+          emptyMessage="No recent departments"
+        />
+        <QuickActions actions={quickActions} />
+      </div>
+    </div>
+  );
+};
+
+export default DashboardPage;
