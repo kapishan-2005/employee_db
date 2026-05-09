@@ -8,6 +8,8 @@
  * - Reusable HTTP methods
  */
 
+import axios from 'axios';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 /**
@@ -18,55 +20,72 @@ const getToken = () => {
 };
 
 /**
- * Centralized fetch wrapper with automatic token attachment and retry logic
+ * Create axios instance with default config
  */
-const apiFetch = async (endpoint, options = {}, retries = 0) => {
-  const token = getToken();
-  
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
-  };
+const axiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
+/**
+ * Request interceptor - attach JWT token
+ */
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-  try {
-    const response = await fetch(url, config);
-    
+/**
+ * Response interceptor - handle 401 and errors
+ */
+axiosInstance.interceptors.response.use(
+  (response) => {
+    // Return data directly for successful responses
+    return response.data;
+  },
+  async (error) => {
     // Handle 401 Unauthorized - token expired or invalid
-    if (response.status === 401) {
+    if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+      return Promise.reject(new Error('Session expired. Please login again.'));
     }
 
-    // Parse response
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(data.error || data.message || `HTTP ${response.status}`);
+    // Handle network errors with retry logic
+    if (!error.response && error.config && !error.config.__retryCount) {
+      error.config.__retryCount = 0;
     }
 
-    return data;
-  } catch (error) {
-    // Retry on network errors (max 2 retries)
-    if (error.message === 'Failed to fetch' && retries < 2) {
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
-      return apiFetch(endpoint, options, retries + 1);
+    if (!error.response && error.config && error.config.__retryCount < 2) {
+      error.config.__retryCount += 1;
+      const delay = 1000 * error.config.__retryCount;
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return axiosInstance(error.config);
     }
-    
-    // Network errors or other fetch failures
-    if (error.message === 'Failed to fetch') {
-      throw new Error('Network error. Please check your connection.');
+
+    // Network errors
+    if (!error.response) {
+      return Promise.reject(new Error('Network error. Please check your connection.'));
     }
-    throw error;
+
+    // API errors
+    const message = error.response?.data?.error || 
+                   error.response?.data?.message || 
+                   `HTTP ${error.response?.status}`;
+    return Promise.reject(new Error(message));
   }
-};
+);
 
 /**
  * HTTP Methods
@@ -76,48 +95,35 @@ export const api = {
    * GET request
    */
   get: async (endpoint) => {
-    return apiFetch(endpoint, {
-      method: 'GET',
-    });
+    return axiosInstance.get(endpoint);
   },
 
   /**
    * POST request
    */
   post: async (endpoint, data) => {
-    return apiFetch(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.post(endpoint, data);
   },
 
   /**
    * PUT request
    */
   put: async (endpoint, data) => {
-    return apiFetch(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.put(endpoint, data);
   },
 
   /**
    * PATCH request
    */
   patch: async (endpoint, data) => {
-    return apiFetch(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.patch(endpoint, data);
   },
 
   /**
    * DELETE request
    */
   delete: async (endpoint) => {
-    return apiFetch(endpoint, {
-      method: 'DELETE',
-    });
+    return axiosInstance.delete(endpoint);
   },
 };
 
