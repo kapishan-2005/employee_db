@@ -135,7 +135,7 @@ const LoginPage = () => {
           <p className="text-white/40 text-xs mb-2">Demo Credentials:</p>
           <p className="text-white/60 text-xs font-mono">
             Username: admin<br />
-            Password: admin123
+            Password: Admin@123
           </p>
         </div>
       </div>

@@ -46,15 +46,23 @@ export const AuthProvider = ({ children }) => {
    */
   const login = async (username, password) => {
     try {
+      console.log('[AuthContext] Login attempt:', { username });
+      
       const response = await api.post(endpoints.auth.login, {
         username,
         password,
       });
 
-      if (response.success && response.token) {
+      console.log('[AuthContext] Login response:', response);
+
+      // Backend returns: { message, user, token }
+      if (response.token && response.user) {
         // Save token and user to localStorage
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
+
+        console.log('[AuthContext] Token saved:', response.token);
+        console.log('[AuthContext] User saved:', response.user);
 
         // Update state
         setToken(response.token);
@@ -65,7 +73,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(response.error || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('[AuthContext] Login error:', error);
       throw error;
     }
   };

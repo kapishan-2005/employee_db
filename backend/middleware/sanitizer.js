@@ -35,15 +35,30 @@ const sanitizeObject = (obj) => {
 };
 
 export const sanitizeInput = (req, res, next) => {
+  // Sanitize req.body (safe to replace)
   if (req.body) {
     req.body = sanitizeObject(req.body);
   }
-  if (req.query) {
-    req.query = sanitizeObject(req.query);
+  
+  // Sanitize req.query in-place (read-only getter, cannot replace)
+  if (req.query && typeof req.query === 'object') {
+    for (const key in req.query) {
+      if (Object.prototype.hasOwnProperty.call(req.query, key)) {
+        const value = req.query[key];
+        if (typeof value === 'object' && value !== null) {
+          req.query[key] = sanitizeObject(value);
+        } else {
+          req.query[key] = sanitizeValue(value);
+        }
+      }
+    }
   }
+  
+  // Sanitize req.params (safe to replace)
   if (req.params) {
     req.params = sanitizeObject(req.params);
   }
+  
   next();
 };
 

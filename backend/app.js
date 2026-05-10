@@ -12,7 +12,8 @@ import errorHandler from "./middleware/errorHandler.js";
 import requestLogger from "./middleware/requestLogger.js";
 import sanitizeInput from "./middleware/sanitizer.js";
 
-dotenv.config();
+// Configure dotenv silently
+dotenv.config({ override: false });
 
 const app = express();
 
@@ -71,7 +72,7 @@ const PORT = process.env.PORT || 5000;
 // Test database connection on startup
 pool.execute('SELECT 1')
   .then(() => {
-    // Database connected
+    console.log('✓ MySQL database connected successfully');
   })
   .catch((err) => {
     console.error('✗ MySQL connection failed:', err.message);
@@ -79,5 +80,5 @@ pool.execute('SELECT 1')
   });
 
 app.listen(PORT, () => {
-  // Server started
+  console.log(`Server running on port ${PORT}`);
 });
