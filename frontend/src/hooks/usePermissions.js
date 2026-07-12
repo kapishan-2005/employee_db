@@ -15,30 +15,38 @@ export const usePermissions = () => {
 
   return {
     // Role checks
+    isCEO: role === 'ceo',
     isAdmin: role === 'admin',
     isManager: role === 'manager',
     isEmployee: role === 'employee',
     isAdminOrManager: role === 'admin' || role === 'manager',
+    isCEOOrAdmin: role === 'ceo' || role === 'admin',
+    isCEOAdminOrManager: role === 'ceo' || role === 'admin' || role === 'manager',
 
     // Employee permissions
-    canCreateEmployee: role === 'admin' || role === 'manager',
-    canEditEmployee: role === 'admin' || role === 'manager',
-    canDeleteEmployee: role === 'admin',
+    canCreateEmployee: role === 'ceo' || role === 'admin' || role === 'manager',
+    canEditEmployee: role === 'ceo' || role === 'admin' || role === 'manager',
+    canDeleteEmployee: role === 'ceo' || role === 'admin',
     canViewEmployees: true, // All authenticated users
 
     // Department permissions
-    canCreateDepartment: role === 'admin',
-    canEditDepartment: role === 'admin',
-    canDeleteDepartment: role === 'admin',
+    canCreateDepartment: role === 'ceo' || role === 'admin',
+    canEditDepartment: role === 'ceo' || role === 'admin',
+    canDeleteDepartment: role === 'ceo' || role === 'admin',
     canViewDepartments: true, // All authenticated users
 
     // Attendance permissions
     canCheckIn: true, // All authenticated users
     canCheckOut: true, // All authenticated users
-    canEditAttendance: role === 'admin' || role === 'manager',
-    canViewAllAttendance: role === 'admin' || role === 'manager',
+    canEditAttendance: role === 'ceo' || role === 'admin' || role === 'manager',
+    canViewAllAttendance: role === 'ceo' || role === 'admin' || role === 'manager',
     canViewOwnAttendance: true, // All authenticated users
-    canViewReports: role === 'admin' || role === 'manager',
+    canViewReports: role === 'ceo' || role === 'admin' || role === 'manager',
+
+    // AI permissions
+    canGenerateInsights: role === 'ceo' || role === 'admin',
+    canAnalyzePerformance: role === 'ceo' || role === 'admin' || role === 'manager',
+    canUseRecruitmentAI: role === 'ceo' || role === 'admin',
 
     // Current user info
     currentRole: role,

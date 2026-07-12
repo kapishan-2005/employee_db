@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFetch } from '../hooks/useFetch';
 import dashboardService from '../services/dashboardService';
@@ -21,8 +21,22 @@ const DashboardPage = () => {
     return response;
   }, []);
 
-  const { data: overview, loading: overviewLoading } = useFetch(fetchOverview);
-  const { data: activity, loading: activityLoading } = useFetch(fetchActivity);
+  const { data: overview, loading: overviewLoading, refetch: refetchOverview } = useFetch(fetchOverview);
+  const { data: activity, loading: activityLoading, refetch: refetchActivity } = useFetch(fetchActivity);
+
+  // Silent auto-refresh every 15s (no loading spinner, just refreshes data in background)
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      refetchOverview();
+      refetchActivity();
+      setLastUpdated(new Date());
+    }, 15000);
+
+    return () => clearInterval(intervalRef.current);
+  }, [refetchOverview, refetchActivity]);
 
   if (overviewLoading || activityLoading) {
     return (
@@ -68,7 +82,13 @@ const DashboardPage = () => {
 
     return (
       <div className="max-w-7xl mx-auto px-6 py-10">
-        <PageHeader title="My Dashboard" subtitle="Welcome back" />
+        <div className="flex items-center justify-between">
+          <PageHeader title="My Dashboard" subtitle="Welcome back" />
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            Live • Updated {lastUpdated.toLocaleTimeString()}
+          </div>
+        </div>
 
         <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
           <p className="text-white font-medium">{employee.name}</p>
@@ -198,7 +218,13 @@ const DashboardPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
-      <PageHeader title="Dashboard" subtitle="Overview" />
+      <div className="flex items-center justify-between">
+        <PageHeader title="Dashboard" subtitle="Overview" />
+        <div className="flex items-center gap-2 text-xs text-white/40">
+          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          Live • Updated {lastUpdated.toLocaleTimeString()}
+        </div>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <DashboardCard

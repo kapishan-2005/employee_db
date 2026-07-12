@@ -9,12 +9,12 @@ const router = express.Router();
 router.get("/", authMiddleware, controller.getAllEmployees);
 router.get("/:id", authMiddleware, controller.getEmployeeById);
 
-// POST/PUT/PATCH routes - admin and manager only
-router.post("/", authMiddleware, requireRole('admin', 'manager'), controller.createEmployee);
-router.put("/:id", authMiddleware, requireRole('admin', 'manager'), controller.updateEmployee);
-router.patch("/:id", authMiddleware, requireRole('admin', 'manager'), controller.patchEmployee);
+// POST/PUT/PATCH routes - ceo, admin and manager only
+router.post("/", authMiddleware, requireRole('ceo', 'admin', 'manager'), controller.createEmployee);
+router.put("/:id", authMiddleware, requireRole('ceo', 'admin', 'manager'), controller.updateEmployee);
+router.patch("/:id", authMiddleware, requireRole('ceo', 'admin', 'manager'), controller.patchEmployee);
 
-// DELETE routes - admin only
-router.delete("/:id", authMiddleware, requireRole('admin'), controller.deleteEmployee);
+// DELETE routes - ceo and admin only
+router.delete("/:id", authMiddleware, requireRole('ceo', 'admin'), controller.deleteEmployee);
 
 export default router;

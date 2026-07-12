@@ -8,6 +8,7 @@ import DashboardPage from './pages/DashboardPage';
 import EmployeesPage from './pages/EmployeesPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import AttendancePage from './pages/AttendancePage';
+import CEODashboard from './pages/CEO/Dashboard';
 
 export default function App() {
   return (
@@ -55,6 +56,17 @@ export default function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <AttendancePage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/ceo/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={['ceo']}>
+                  <MainLayout>
+                    <CEODashboard />
                   </MainLayout>
                 </ProtectedRoute>
               }

@@ -1,5 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Footer from '../components/common/Footer';
+import AIChat from '../components/common/AIChat';
 
 const MainLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -12,6 +14,9 @@ const MainLayout = ({ children }) => {
   };
 
   const navItems = [
+    ...(currentUser?.role === 'ceo'
+      ? [{ path: '/ceo/dashboard', label: 'Company', icon: '🏛️' }]
+      : []),
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/employees', label: 'Employees', icon: '👥' },
     { path: '/departments', label: 'Departments', icon: '🏢' },
@@ -87,6 +92,9 @@ const MainLayout = ({ children }) => {
       <main className="relative">
         {children}
       </main>
+
+      <Footer />
+      <AIChat />
     </div>
   );
 };

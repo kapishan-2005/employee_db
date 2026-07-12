@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import attendanceService from '../services/attendanceService';
+import aiService from '../services/aiService';
 import { api, endpoints } from '../services/api';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../hooks/useToast';
@@ -15,6 +16,138 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import StatCard from '../components/common/StatCard';
 import PageHeader from '../components/common/PageHeader';
+
+// AI Attendance Intelligence panel (CEO / Admin / Manager only)
+const AttendanceIntelligence = () => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  const runAnalysis = async () => {
+    setLoading(true);
+    setError(null);
+    setOpen(true);
+    try {
+      const res = await aiService.getAttendanceIntelligence();
+      setData(res.data);
+    } catch (e) {
+      setError(e.message || 'Failed to analyze attendance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mb-8 rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+          🤖 AI Attendance Intelligence
+        </h3>
+        <button
+          onClick={runAnalysis}
+          disabled={loading}
+          className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+        >
+          {loading ? 'Analyzing…' : open ? 'Re-analyze' : 'Analyze Patterns'}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-5">
+          {loading ? (
+            <LoadingSpinner message="Detecting attendance patterns..." />
+          ) : error ? (
+            <p className="text-sm text-red-300">{error}</p>
+          ) : data ? (
+            <div className="space-y-5">
+              {data.summary && (
+                <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-sm text-white/85 whitespace-pre-wrap">
+                  {data.summary}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/40 mb-2">
+                    Frequent Late Arrivals (30d)
+                  </p>
+                  {data.frequentLate?.length ? (
+                    <div className="space-y-1.5">
+                      {data.frequentLate.map((r) => (
+                        <div
+                          key={r.employee_id}
+                          className="flex justify-between text-sm bg-orange-500/5 border border-orange-500/15 rounded-lg px-3 py-2"
+                        >
+                          <span className="text-white/80">{r.name} <span className="text-white/30">• {r.department || '—'}</span></span>
+                          <span className="text-orange-300 font-medium">{r.lateCount}x</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/30">No frequent late arrivals</p>
+                  )}
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/40 mb-2">
+                    Frequent Absences (30d)
+                  </p>
+                  {data.frequentAbsent?.length ? (
+                    <div className="space-y-1.5">
+                      {data.frequentAbsent.map((r) => (
+                        <div
+                          key={r.employee_id}
+                          className="flex justify-between text-sm bg-red-500/5 border border-red-500/15 rounded-lg px-3 py-2"
+                        >
+                          <span className="text-white/80">{r.name} <span className="text-white/30">• {r.department || '—'}</span></span>
+                          <span className="text-red-300 font-medium">{r.absentCount}x</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/30">No frequent absences</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/40 mb-2">
+                  Department Attendance Rate (30d)
+                </p>
+                {data.departmentIssues?.length ? (
+                  <div className="space-y-1.5">
+                    {data.departmentIssues.map((d) => (
+                      <div
+                        key={d.department}
+                        className="flex justify-between items-center text-sm bg-white/[0.03] border border-white/8 rounded-lg px-3 py-2"
+                      >
+                        <span className="text-white/80">{d.department}</span>
+                        <span
+                          className={`font-medium ${
+                            d.attendanceRate >= 90
+                              ? 'text-emerald-300'
+                              : d.attendanceRate >= 75
+                              ? 'text-orange-300'
+                              : 'text-red-300'
+                          }`}
+                        >
+                          {d.attendanceRate}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-white/30">No department data available</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Attendance Form Component
 const AttendanceForm = ({ type, onSubmit, loading, employees }) => {
@@ -155,6 +288,8 @@ const AttendancePage = () => {
       {permissions.isEmployee && (
         <p className="text-xs text-white/40 mb-6">Viewing your own attendance records</p>
       )}
+
+      {permissions.isCEOAdminOrManager && <AttendanceIntelligence />}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Records" value={stats.total} />

@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import aiRoutes from "./routes/ai.routes.js";
 import { pool } from "./config/db.js";
 import errorHandler from "./middleware/errorHandler.js";
 import requestLogger from "./middleware/requestLogger.js";
@@ -55,6 +56,9 @@ app.use("/api/attendance", attendanceRoutes);
 
 // Dashboard routes
 app.use("/api/dashboard", dashboardRoutes);
+
+// AI Workforce Intelligence routes
+app.use("/api/ai", aiRoutes);
 
 // 404 handler
 app.use((req, res) => {

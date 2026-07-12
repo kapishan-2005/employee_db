@@ -168,6 +168,17 @@ export const endpoints = {
     report: '/attendance/report',
     update: (id) => `/attendance/${id}`,
   },
+
+  // AI
+  ai: {
+    chat: '/ai/chat',
+    chatHistory: '/ai/chat/history',
+    insights: '/ai/insights',
+    generateInsights: '/ai/insights/generate',
+    performance: (employeeId) => `/ai/performance/${employeeId}`,
+    attendanceIntelligence: '/ai/attendance-intelligence',
+    recruitment: '/ai/recruitment',
+  },
 };
 
 export default api;

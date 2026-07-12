@@ -55,10 +55,10 @@ export const register = async (req, res) => {
     }
 
     // Validate role if provided
-    const validRoles = ['admin', 'manager', 'employee'];
+    const validRoles = ['ceo', 'admin', 'manager', 'employee'];
     if (role && !validRoles.includes(role)) {
       return res.status(400).json({ 
-        error: 'Invalid role. Must be admin, manager, or employee' 
+        error: 'Invalid role. Must be ceo, admin, manager, or employee' 
       });
     }
 

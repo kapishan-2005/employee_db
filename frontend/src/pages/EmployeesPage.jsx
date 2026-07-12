@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../hooks/useToast';
 import { useModal } from '../hooks/useModal';
 import { useSearch } from '../hooks/useSearch';
 import { useFetch } from '../hooks/useFetch';
 import { api, endpoints } from '../services/api';
+import aiService from '../services/aiService';
 import Toast from '../components/common/Toast';
 import Modal from '../components/common/Modal';
 import Button from '../components/common/Button';
@@ -15,6 +16,75 @@ import StatCard from '../components/common/StatCard';
 import SearchBar from '../components/common/SearchBar';
 import PageHeader from '../components/common/PageHeader';
 import ConfirmDialog from '../components/common/ConfirmDialog';
+
+// AI Performance Analysis panel (shown inside a Modal)
+const PerformanceAnalysis = ({ employeeId }) => {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    aiService
+      .analyzePerformance(employeeId)
+      .then((res) => {
+        if (!cancelled) setResult(res.data);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message || 'Failed to analyze performance');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId]);
+
+  if (loading) return <LoadingSpinner message="Analyzing performance..." />;
+  if (error) return <p className="text-sm text-red-300">{error}</p>;
+  if (!result) return null;
+
+  const scoreColor =
+    result.performanceScore >= 80
+      ? 'text-emerald-300'
+      : result.performanceScore >= 60
+      ? 'text-orange-300'
+      : 'text-red-300';
+
+  return (
+    <div className="space-y-5">
+      <div className="text-center">
+        <p className="text-xs uppercase tracking-widest text-white/40 mb-1">Performance Score</p>
+        <p className={`text-5xl font-bold ${scoreColor}`}>{result.performanceScore}%</p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="text-center p-3 rounded-lg bg-white/[0.03] border border-white/8">
+          <p className="text-xs text-white/40 mb-1">Attendance</p>
+          <p className="text-lg font-semibold text-white">{result.breakdown.attendanceScore}%</p>
+        </div>
+        <div className="text-center p-3 rounded-lg bg-white/[0.03] border border-white/8">
+          <p className="text-xs text-white/40 mb-1">Activity</p>
+          <p className="text-lg font-semibold text-white">{result.breakdown.activityScore}%</p>
+        </div>
+        <div className="text-center p-3 rounded-lg bg-white/[0.03] border border-white/8">
+          <p className="text-xs text-white/40 mb-1">Task</p>
+          <p className="text-lg font-semibold text-white">{result.breakdown.taskScore}%</p>
+        </div>
+      </div>
+
+      {result.recommendation && (
+        <div className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5">
+          <p className="text-xs uppercase tracking-widest text-white/40 mb-1">AI Recommendation</p>
+          <p className="text-sm text-white/85">{result.recommendation}</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Employee Form Component
 const EmployeeForm = ({ initial = { name: '', course: '', roll_no: '' }, onSubmit, loading }) => {
@@ -183,6 +253,11 @@ export default function EmployeesPage() {
                     <td className="px-5 py-4 font-mono text-white/60 text-xs">{emp.roll_no}</td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {permissions.canAnalyzePerformance && (
+                          <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'performance', emp })}>
+                            🤖 AI Score
+                          </Button>
+                        )}
                         {permissions.canEditEmployee && (
                           <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'edit', emp })}>
                             Edit
@@ -219,6 +294,12 @@ export default function EmployeesPage() {
       {modal?.type === 'edit' && (
         <Modal title="Edit Employee" onClose={closeModal}>
           <EmployeeForm initial={modal.emp} onSubmit={handleUpdate} loading={saving} />
+        </Modal>
+      )}
+
+      {modal?.type === 'performance' && (
+        <Modal title={`AI Performance — ${modal.emp.name}`} onClose={closeModal}>
+          <PerformanceAnalysis employeeId={modal.emp.id} />
         </Modal>
       )}
 

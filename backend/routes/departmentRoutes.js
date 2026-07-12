@@ -11,11 +11,11 @@ router.get("/:id/employees", authMiddleware, controller.getDepartmentEmployees);
 router.get("/:id/stats", authMiddleware, controller.getDepartmentStats);
 router.get("/:id", authMiddleware, controller.getDepartmentById);
 
-// POST/PUT routes - admin only
-router.post("/", authMiddleware, requireRole('admin'), controller.createDepartment);
-router.put("/:id", authMiddleware, requireRole('admin'), controller.updateDepartment);
+// POST/PUT routes - ceo and admin only
+router.post("/", authMiddleware, requireRole('ceo', 'admin'), controller.createDepartment);
+router.put("/:id", authMiddleware, requireRole('ceo', 'admin'), controller.updateDepartment);
 
-// DELETE routes - admin only
-router.delete("/:id", authMiddleware, requireRole('admin'), controller.deleteDepartment);
+// DELETE routes - ceo and admin only
+router.delete("/:id", authMiddleware, requireRole('ceo', 'admin'), controller.deleteDepartment);
 
 export default router;
