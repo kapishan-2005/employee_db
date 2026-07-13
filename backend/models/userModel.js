@@ -86,6 +86,19 @@ const User = {
   },
 
   /**
+   * Count total users (used to detect first-run/bootstrap state)
+   * @returns {Promise<number>}
+   */
+  count: async () => {
+    try {
+      const [[row]] = await pool.execute('SELECT COUNT(*) as total FROM users');
+      return row.total;
+    } catch (error) {
+      throw new Error(`Error counting users: ${error.message}`);
+    }
+  },
+
+  /**
    * Create new user
    * NOTE: In Phase 2, password will be hashed before calling this method
    * @param {Object} data - User data

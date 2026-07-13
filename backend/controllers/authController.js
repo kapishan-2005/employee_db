@@ -19,7 +19,16 @@ import { generateToken } from '../utils/jwtUtils.js';
 /**
  * Register a new user
  * POST /api/auth/register
- * 
+ *
+ * Security model:
+ * - BOOTSTRAP: if no users exist yet in the system, this is the very first
+ *   account. It is created as 'ceo' regardless of what role is sent, and no
+ *   auth token is required (there's nobody to log in as yet).
+ * - AFTER BOOTSTRAP: registration is locked down. A valid CEO or Admin JWT
+ *   token is required to create any further account (HR/Admin, Manager, or
+ *   Employee). CEOs can create any role; Admins cannot create another CEO.
+ *   Unauthenticated or non-CEO/Admin requests are rejected.
+ *
  * Body:
  * - username (required)
  * - email (required)
@@ -62,6 +71,34 @@ export const register = async (req, res) => {
       });
     }
 
+    // ---- Bootstrap / access control ----
+    const userCount = await User.count();
+    let finalRole;
+
+    if (userCount === 0) {
+      // First-ever account: always CEO, no auth required.
+      finalRole = 'ceo';
+    } else {
+      // System already has users: creating an account now requires being
+      // logged in as CEO or Admin (checked via optionalAuthMiddleware).
+      const creator = req.user;
+
+      if (!creator || (creator.role !== 'ceo' && creator.role !== 'admin')) {
+        return res.status(403).json({
+          error: 'Only a CEO or Admin can create new accounts. Please sign in first.',
+        });
+      }
+
+      finalRole = role || 'employee';
+
+      // Admins cannot mint another CEO account
+      if (finalRole === 'ceo' && creator.role !== 'ceo') {
+        return res.status(403).json({
+          error: 'Only a CEO can create another CEO account',
+        });
+      }
+    }
+
     // Check if username already exists
     const existingUsername = await User.findByUsername(username);
     if (existingUsername) {
@@ -86,11 +123,12 @@ export const register = async (req, res) => {
       username,
       email,
       password_hash,
-      role: role || 'employee',
+      role: finalRole,
       employee_id: employee_id || null
     });
 
-    // Generate JWT token
+    // Generate JWT token (only useful for the bootstrap/self-registration case;
+    // when an admin/CEO creates another user, the caller keeps their own token)
     const token = generateToken(user);
 
     // Return user info (without password) and token

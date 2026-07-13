@@ -3,12 +3,14 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import MainLayout from './layouts/MainLayout';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import EmployeesPage from './pages/EmployeesPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import AttendancePage from './pages/AttendancePage';
 import CEODashboard from './pages/CEO/Dashboard';
+import RecruitmentPage from './pages/RecruitmentPage';
 
 export default function App() {
   return (
@@ -17,6 +19,7 @@ export default function App() {
         <AuthProvider>
           <Routes>
             {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
 
             {/* Protected Routes */}
@@ -72,9 +75,19 @@ export default function App() {
               }
             />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/recruitment"
+              element={
+                <ProtectedRoute allowedRoles={['ceo', 'admin']}>
+                  <MainLayout>
+                    <RecruitmentPage />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

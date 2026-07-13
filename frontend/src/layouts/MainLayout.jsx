@@ -21,6 +21,9 @@ const MainLayout = ({ children }) => {
     { path: '/employees', label: 'Employees', icon: '👥' },
     { path: '/departments', label: 'Departments', icon: '🏢' },
     { path: '/attendance', label: 'Attendance', icon: '📋' },
+    ...(currentUser?.role === 'ceo' || currentUser?.role === 'admin'
+      ? [{ path: '/recruitment', label: 'Recruitment', icon: '🎯' }]
+      : []),
   ];
 
   const isActive = (path) => location.pathname === path;

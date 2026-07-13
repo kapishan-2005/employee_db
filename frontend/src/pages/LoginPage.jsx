@@ -125,7 +125,7 @@ const LoginPage = () => {
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-white/30 text-xs">
-              Employee Management System v1.0
+              AI Workforce Intelligence Platform
             </p>
           </div>
         </div>
