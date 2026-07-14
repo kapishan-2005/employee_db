@@ -43,7 +43,8 @@ export const getAllEmployees = async (req, res) => {
       limit: limit || 10,
       search: search || '',
       status: status || '',
-      department_id: department_id || ''
+      department_id: department_id || '',
+      organization_id: req.user.organization_id
     });
     
     res.json({
@@ -71,7 +72,7 @@ export const getEmployeeById = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findById(id);
+    const employee = await Employee.findById(id, req.user.organization_id);
 
     if (!employee) {
       return res.status(404).json({
@@ -173,7 +174,8 @@ export const createEmployee = async (req, res) => {
       salary,
       status,
       address,
-      profile_picture
+      profile_picture,
+      organization_id: req.user.organization_id
     });
 
     res.status(201).json({
@@ -289,7 +291,8 @@ export const updateEmployee = async (req, res) => {
         address,
         profile_picture
       },
-      { new: true }
+      { new: true },
+      req.user.organization_id
     );
 
     if (!employee) {
@@ -378,7 +381,8 @@ export const patchEmployee = async (req, res) => {
     const employee = await Employee.findByIdAndUpdate(
       id,
       updateData,
-      { new: true }
+      { new: true },
+      req.user.organization_id
     );
 
     if (!employee) {
@@ -420,7 +424,7 @@ export const deleteEmployee = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findByIdAndDelete(id);
+    const employee = await Employee.findByIdAndDelete(id, req.user.organization_id);
 
     if (!employee) {
       return res.status(404).json({

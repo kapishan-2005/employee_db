@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Bot, X, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import aiService from '../../services/aiService';
 
@@ -93,10 +94,10 @@ const AIChat = () => {
       {/* Floating toggle button */}
       <button
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30 flex items-center justify-center text-2xl hover:scale-105 transition-transform"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shadow-lg shadow-indigo-500/30 flex items-center justify-center hover:scale-105 transition-transform"
         aria-label="Open AI Assistant"
       >
-        {open ? '✕' : '🤖'}
+        {open ? <X size={22} /> : <Bot size={22} />}
       </button>
 
       {open && (
@@ -104,7 +105,7 @@ const AIChat = () => {
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/10 bg-white/[0.02]">
             <p className="text-sm font-semibold text-white flex items-center gap-2">
-              🤖 {roleLabel[role] || 'AI Assistant'}
+              <Bot size={16} className="text-indigo-300" /> {roleLabel[role] || 'AI Assistant'}
             </p>
             <p className="text-xs text-white/40 capitalize">{role} mode</p>
           </div>
@@ -168,7 +169,7 @@ const AIChat = () => {
               disabled={loading || !input.trim()}
               className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-500 hover:bg-indigo-400 disabled:opacity-40 text-white transition-colors"
             >
-              →
+              <Send size={16} />
             </button>
           </div>
         </div>

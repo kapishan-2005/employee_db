@@ -37,7 +37,8 @@ export const generateToken = (user) => {
       id: user.id,
       username: user.username,
       role: user.role || 'employee',
-      email: user.email
+      email: user.email,
+      organization_id: user.organization_id
     };
 
     // Sign and return token

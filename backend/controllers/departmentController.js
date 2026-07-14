@@ -13,7 +13,7 @@ export const getAllDepartments = async (req, res) => {
   try {
     const { is_active } = req.query;
     
-    const options = {};
+    const options = { organization_id: req.user.organization_id };
     if (is_active !== undefined) {
       options.isActive = is_active === 'true' || is_active === '1';
     }
@@ -45,7 +45,7 @@ export const getDepartmentById = async (req, res) => {
       });
     }
 
-    const department = await Department.findById(id);
+    const department = await Department.findById(id, req.user.organization_id);
 
     if (!department) {
       return res.status(404).json({
@@ -87,7 +87,7 @@ export const createDepartment = async (req, res) => {
     }
 
     // Check if department with same name already exists
-    const existing = await Department.findByName(name.trim());
+    const existing = await Department.findByName(name.trim(), req.user.organization_id);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -98,11 +98,12 @@ export const createDepartment = async (req, res) => {
     const department = await Department.create({
       name: name.trim(),
       description: description ? description.trim() : null,
-      is_active: is_active !== undefined ? is_active : true
+      is_active: is_active !== undefined ? is_active : true,
+      organization_id: req.user.organization_id
     });
 
     // Fetch the complete created department
-    const created = await Department.findById(department.id);
+    const created = await Department.findById(department.id, req.user.organization_id);
 
     res.status(201).json({
       success: true,
@@ -138,7 +139,7 @@ export const updateDepartment = async (req, res) => {
     }
 
     // Check if department exists
-    const existing = await Department.findById(id);
+    const existing = await Department.findById(id, req.user.organization_id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -156,7 +157,7 @@ export const updateDepartment = async (req, res) => {
       }
 
       // Check if another department has this name
-      const duplicate = await Department.findByName(name.trim());
+      const duplicate = await Department.findByName(name.trim(), req.user.organization_id);
       if (duplicate && duplicate.id !== parseInt(id)) {
         return res.status(409).json({
           success: false,
@@ -179,7 +180,7 @@ export const updateDepartment = async (req, res) => {
     if (head_id !== undefined) updateData.head_id = head_id;
     if (is_active !== undefined) updateData.is_active = is_active;
 
-    const department = await Department.update(id, updateData, { new: true });
+    const department = await Department.update(id, updateData, { new: true }, req.user.organization_id);
 
     res.json({
       success: true,
@@ -214,7 +215,7 @@ export const deleteDepartment = async (req, res) => {
     }
 
     // Check if department exists
-    const existing = await Department.findById(id);
+    const existing = await Department.findById(id, req.user.organization_id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -223,7 +224,7 @@ export const deleteDepartment = async (req, res) => {
     }
 
     // Check if department has employees
-    const employeeCount = await Department.getEmployeeCount(id);
+    const employeeCount = await Department.getEmployeeCount(id, req.user.organization_id);
     if (employeeCount > 0) {
       return res.status(400).json({
         success: false,
@@ -232,7 +233,7 @@ export const deleteDepartment = async (req, res) => {
       });
     }
 
-    await Department.delete(id);
+    await Department.delete(id, req.user.organization_id);
 
     res.json({
       success: true,
@@ -266,7 +267,7 @@ export const getDepartmentEmployees = async (req, res) => {
     }
 
     // Check if department exists
-    const department = await Department.findById(id);
+    const department = await Department.findById(id, req.user.organization_id);
     if (!department) {
       return res.status(404).json({
         success: false,
@@ -274,7 +275,7 @@ export const getDepartmentEmployees = async (req, res) => {
       });
     }
 
-    const employees = await Department.getEmployees(id);
+    const employees = await Department.getEmployees(id, req.user.organization_id);
 
     res.json({
       success: true,
@@ -307,7 +308,7 @@ export const getDepartmentStats = async (req, res) => {
       });
     }
 
-    const stats = await Department.getStats(id);
+    const stats = await Department.getStats(id, req.user.organization_id);
 
     if (!stats) {
       return res.status(404).json({

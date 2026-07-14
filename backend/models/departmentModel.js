@@ -21,12 +21,12 @@ const Department = {
    */
   findAll: async (options = {}) => {
     try {
-      let query = 'SELECT * FROM departments';
-      const params = [];
+      let query = 'SELECT * FROM departments WHERE organization_id = ?';
+      const params = [options.organization_id];
 
       // Filter by active status if specified
       if (options.isActive !== undefined) {
-        query += ' WHERE is_active = ?';
+        query += ' AND is_active = ?';
         params.push(options.isActive);
       }
 
@@ -50,11 +50,11 @@ const Department = {
    * @param {number} id - Department ID
    * @returns {Promise<Object|null>} Department object or null if not found
    */
-  findById: async (id) => {
+  findById: async (id, organization_id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT * FROM departments WHERE id = ?',
-        [id]
+        'SELECT * FROM departments WHERE id = ? AND organization_id = ?',
+        [id, organization_id]
       );
       return rows[0] || null;
     } catch (error) {
@@ -67,11 +67,11 @@ const Department = {
    * @param {string} name - Department name
    * @returns {Promise<Object|null>} Department object or null if not found
    */
-  findByName: async (name) => {
+  findByName: async (name, organization_id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT * FROM departments WHERE name = ?',
-        [name]
+        'SELECT * FROM departments WHERE name = ? AND organization_id = ?',
+        [name, organization_id]
       );
       return rows[0] || null;
     } catch (error) {
@@ -86,18 +86,19 @@ const Department = {
    */
   create: async (data) => {
     try {
-      const { name, description, is_active = true } = data;
+      const { name, description, is_active = true, organization_id } = data;
       
       const [result] = await pool.execute(
-        'INSERT INTO departments (name, description, is_active) VALUES (?, ?, ?)',
-        [name, description || null, is_active]
+        'INSERT INTO departments (name, description, is_active, organization_id) VALUES (?, ?, ?, ?)',
+        [name, description || null, is_active, organization_id]
       );
 
       return {
         id: result.insertId,
         name,
         description: description || null,
-        is_active
+        is_active,
+        organization_id
       };
     } catch (error) {
       // Handle duplicate name error
@@ -115,7 +116,7 @@ const Department = {
    * @param {Object} options - Options (e.g., { new: true } to return updated record)
    * @returns {Promise<Object|null>} Updated department object or null if not found
    */
-  update: async (id, data, options = {}) => {
+  update: async (id, data, options = {}, organization_id) => {
     try {
       const { name, description, head_id, is_active } = data;
       
@@ -144,10 +145,10 @@ const Department = {
         throw new Error('No fields to update');
       }
 
-      params.push(id);
+      params.push(id, organization_id);
 
       const [result] = await pool.execute(
-        `UPDATE departments SET ${updates.join(', ')} WHERE id = ?`,
+        `UPDATE departments SET ${updates.join(', ')} WHERE id = ? AND organization_id = ?`,
         params
       );
 
@@ -157,7 +158,7 @@ const Department = {
 
       // Return updated record if requested
       if (options.new) {
-        return await Department.findById(id);
+        return await Department.findById(id, organization_id);
       }
 
       return { id: parseInt(id), ...data };
@@ -171,8 +172,8 @@ const Department = {
   },
 
   // Alias for backward compatibility
-  findByIdAndUpdate: async (id, data, options = {}) => {
-    return Department.update(id, data, options);
+  findByIdAndUpdate: async (id, data, options = {}, organization_id) => {
+    return Department.update(id, data, options, organization_id);
   },
 
   /**
@@ -181,17 +182,17 @@ const Department = {
    * @param {number} id - Department ID
    * @returns {Promise<Object|null>} Deleted department info or null if not found
    */
-  delete: async (id) => {
+  delete: async (id, organization_id) => {
     try {
       // Check if department has employees
-      const employeeCount = await Department.getEmployeeCount(id);
+      const employeeCount = await Department.getEmployeeCount(id, organization_id);
       if (employeeCount > 0) {
         throw new Error(`Cannot delete department with ${employeeCount} assigned employee(s). Please reassign employees first.`);
       }
 
       const [result] = await pool.execute(
-        'DELETE FROM departments WHERE id = ?',
-        [id]
+        'DELETE FROM departments WHERE id = ? AND organization_id = ?',
+        [id, organization_id]
       );
 
       return result.affectedRows > 0 ? { id: parseInt(id) } : null;
@@ -201,8 +202,8 @@ const Department = {
   },
 
   // Alias for backward compatibility
-  findByIdAndDelete: async (id) => {
-    return Department.delete(id);
+  findByIdAndDelete: async (id, organization_id) => {
+    return Department.delete(id, organization_id);
   },
 
   /**
@@ -210,11 +211,11 @@ const Department = {
    * @param {number} departmentId - Department ID
    * @returns {Promise<Array>} Array of employee objects
    */
-  getEmployees: async (departmentId) => {
+  getEmployees: async (departmentId, organization_id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT * FROM employees WHERE department_id = ? ORDER BY name ASC',
-        [departmentId]
+        'SELECT * FROM employees WHERE department_id = ? AND organization_id = ? ORDER BY name ASC',
+        [departmentId, organization_id]
       );
       return rows;
     } catch (error) {
@@ -227,11 +228,11 @@ const Department = {
    * @param {number} departmentId - Department ID
    * @returns {Promise<number>} Number of employees
    */
-  getEmployeeCount: async (departmentId) => {
+  getEmployeeCount: async (departmentId, organization_id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT COUNT(*) as count FROM employees WHERE department_id = ?',
-        [departmentId]
+        'SELECT COUNT(*) as count FROM employees WHERE department_id = ? AND organization_id = ?',
+        [departmentId, organization_id]
       );
       return rows[0].count;
     } catch (error) {
@@ -244,7 +245,7 @@ const Department = {
    * @param {number} departmentId - Department ID (optional, if provided returns stats for specific department)
    * @returns {Promise<Object>} Department statistics
    */
-  getStats: async (departmentId) => {
+  getStats: async (departmentId, organization_id) => {
     try {
       if (departmentId) {
         // Get stats for specific department
@@ -261,9 +262,9 @@ const Department = {
             AVG(e.salary) as average_salary
           FROM departments d
           LEFT JOIN employees e ON d.id = e.department_id
-          WHERE d.id = ?
+          WHERE d.id = ? AND d.organization_id = ?
           GROUP BY d.id, d.name, d.description, d.is_active
-        `, [departmentId]);
+        `, [departmentId, organization_id]);
         
         if (rows.length === 0) {
           return null;
@@ -274,7 +275,7 @@ const Department = {
           average_salary: rows[0].average_salary ? parseFloat(rows[0].average_salary).toFixed(2) : null
         };
       } else {
-        // Get stats for all departments
+        // Get stats for all departments in this organization
         const [rows] = await pool.execute(`
           SELECT 
             d.id,
@@ -284,9 +285,10 @@ const Department = {
             SUM(CASE WHEN e.status = 'active' THEN 1 ELSE 0 END) as active_employees
           FROM departments d
           LEFT JOIN employees e ON d.id = e.department_id
+          WHERE d.organization_id = ?
           GROUP BY d.id, d.name, d.is_active
           ORDER BY d.name ASC
-        `);
+        `, [organization_id]);
         return rows;
       }
     } catch (error) {

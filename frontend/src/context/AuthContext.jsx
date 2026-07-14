@@ -79,6 +79,33 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Sign up (bootstrap only — works only when no users exist yet in the
+   * system; server will reject with 403 otherwise, guiding the user to log in)
+   */
+  const signup = async ({ username, email, password }) => {
+    try {
+      const response = await api.post(endpoints.auth.register, {
+        username,
+        email,
+        password,
+      });
+
+      if (response.token && response.user) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setToken(response.token);
+        setCurrentUser(response.user);
+        return { success: true, user: response.user };
+      } else {
+        throw new Error(response.error || 'Sign up failed');
+      }
+    } catch (error) {
+      console.error('[AuthContext] Signup error:', error);
+      throw error;
+    }
+  };
+
+  /**
    * Logout user
    */
   const logout = () => {
@@ -105,6 +132,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     loading,
     login,
+    signup,
     logout,
     updateUser,
   };

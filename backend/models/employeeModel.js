@@ -1,13 +1,13 @@
 import { pool } from "../config/db.js";
 
 const Employee = {
-  // Get all employees with pagination, search, and filters
+  // Get all employees with pagination, search, and filters (organization-scoped)
   find: async (options = {}) => {
-    const { page = 1, limit = 10, search = '', status = '', department_id = '' } = options;
+    const { page = 1, limit = 10, search = '', status = '', department_id = '', organization_id } = options;
     
-    // Build WHERE clause
-    const conditions = [];
-    const params = [];
+    // Build WHERE clause — organization_id is always required (multi-tenant isolation)
+    const conditions = ['organization_id = ?'];
+    const params = [organization_id];
     
     if (search) {
       conditions.push('(name LIKE ? OR roll_no LIKE ? OR email LIKE ? OR course LIKE ?)');
@@ -25,7 +25,7 @@ const Employee = {
       params.push(department_id);
     }
     
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
     
     // Get total count
     const countQuery = `SELECT COUNT(*) as total FROM employees ${whereClause}`;
@@ -48,18 +48,22 @@ const Employee = {
     };
   },
 
-  // Get employee by ID
-  findById: async (id) => {
-    const [rows] = await pool.execute('SELECT * FROM employees WHERE id = ?', [id]);
+  // Get employee by ID, scoped to organization so no cross-tenant access is possible
+  findById: async (id, organization_id) => {
+    const [rows] = await pool.execute(
+      'SELECT * FROM employees WHERE id = ? AND organization_id = ?',
+      [id, organization_id]
+    );
     return rows[0] || null;
   },
 
-  // Create new employee - supports both old and new fields
+  // Create new employee - supports both old and new fields (organization-scoped)
   create: async (data) => {
     const {
       name,
       course,
       roll_no,
+      organization_id,
       email = null,
       phone = null,
       department_id = null,
@@ -72,9 +76,9 @@ const Employee = {
     } = data;
     
     // Build dynamic INSERT query
-    const fields = ['name', 'course', 'roll_no'];
-    const values = [name, course, roll_no];
-    const placeholders = ['?', '?', '?'];
+    const fields = ['name', 'course', 'roll_no', 'organization_id'];
+    const values = [name, course, roll_no, organization_id];
+    const placeholders = ['?', '?', '?', '?'];
     
     // Add optional fields if provided
     if (email !== null && email !== undefined) {
@@ -126,13 +130,13 @@ const Employee = {
     const query = `INSERT INTO employees (${fields.join(', ')}) VALUES (${placeholders.join(', ')})`;
     const [result] = await pool.execute(query, values);
     
-    return await Employee.findById(result.insertId);
+    return await Employee.findById(result.insertId, organization_id);
   },
 
-  // Update employee by ID - only updates provided fields
-  findByIdAndUpdate: async (id, data, options = {}) => {
-    // Check if employee exists
-    const existing = await Employee.findById(id);
+  // Update employee by ID - only updates provided fields (organization-scoped)
+  findByIdAndUpdate: async (id, data, options = {}, organization_id) => {
+    // Check if employee exists within this organization
+    const existing = await Employee.findById(id, organization_id);
     if (!existing) return null;
     
     // Build dynamic UPDATE query with only provided fields
@@ -197,19 +201,23 @@ const Employee = {
     // Add id to values
     values.push(id);
     
-    const query = `UPDATE employees SET ${updates.join(', ')} WHERE id = ?`;
+    const query = `UPDATE employees SET ${updates.join(', ')} WHERE id = ? AND organization_id = ?`;
+    values.push(organization_id);
     await pool.execute(query, values);
     
     if (options.new) {
-      return await Employee.findById(id);
+      return await Employee.findById(id, organization_id);
     }
     
     return { ...existing, ...data, id: parseInt(id) };
   },
 
-  // Delete employee by ID
-  findByIdAndDelete: async (id) => {
-    const [result] = await pool.execute('DELETE FROM employees WHERE id = ?', [id]);
+  // Delete employee by ID (organization-scoped)
+  findByIdAndDelete: async (id, organization_id) => {
+    const [result] = await pool.execute(
+      'DELETE FROM employees WHERE id = ? AND organization_id = ?',
+      [id, organization_id]
+    );
     return result.affectedRows > 0 ? { id: parseInt(id) } : null;
   }
 };

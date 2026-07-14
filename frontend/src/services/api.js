@@ -169,6 +169,12 @@ export const endpoints = {
     update: (id) => `/attendance/${id}`,
   },
 
+  // Users (CEO/Admin)
+  users: {
+    list: '/auth/users',
+    register: '/auth/register',
+  },
+
   // AI
   ai: {
     chat: '/ai/chat',

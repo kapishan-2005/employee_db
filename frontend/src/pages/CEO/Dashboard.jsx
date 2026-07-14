@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Users, Building2, CheckCircle2, Clock, Sparkles, Info, AlertTriangle, AlertOctagon } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
 import dashboardService from '../../services/dashboardService';
 import aiService from '../../services/aiService';
@@ -13,9 +14,9 @@ const severityStyles = {
 };
 
 const severityIcon = {
-  info: 'ℹ️',
-  warning: '⚠️',
-  critical: '🚨',
+  info: Info,
+  warning: AlertTriangle,
+  critical: AlertOctagon,
 };
 
 const CEODashboard = () => {
@@ -77,7 +78,9 @@ const CEODashboard = () => {
               Analyzing...
             </>
           ) : (
-            <>✨ Generate AI Insights</>
+            <>
+              <Sparkles size={16} /> Generate AI Insights
+            </>
           )}
         </button>
       </div>
@@ -87,27 +90,27 @@ const CEODashboard = () => {
         <DashboardCard
           title="Total Employees"
           value={overviewData.totalEmployees || 0}
-          icon="👥"
+          icon={<Users size={20} />}
           color="indigo"
         />
         <DashboardCard
           title="Departments"
           value={overviewData.totalDepartments || 0}
-          icon="🏢"
+          icon={<Building2 size={20} />}
           color="violet"
         />
         <DashboardCard
           title="Attendance Today"
           value={`${attendancePct}%`}
           subtitle={`${overviewData.presentToday || 0}/${overviewData.attendanceToday || 0} present`}
-          icon="✓"
+          icon={<CheckCircle2 size={20} />}
           color="emerald"
         />
         <DashboardCard
           title="Late Today"
           value={overviewData.lateToday || 0}
           subtitle={`${overviewData.absentToday || 0} absent`}
-          icon="⏰"
+          icon={<Clock size={20} />}
           color="orange"
         />
       </div>
@@ -116,7 +119,7 @@ const CEODashboard = () => {
       <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            🤖 AI Business Insights
+            <Sparkles size={18} className="text-indigo-300" /> AI Business Insights
           </h3>
         </div>
 
@@ -135,22 +138,25 @@ const CEODashboard = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {insights.map((insight) => (
-              <div
-                key={insight.id}
-                className={`p-4 rounded-xl border ${severityStyles[insight.severity] || severityStyles.info}`}
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-lg">{severityIcon[insight.severity] || 'ℹ️'}</span>
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-widest text-white/40 mb-1">
-                      {insight.insight_type?.replace(/_/g, ' ')}
-                    </p>
-                    <p className="text-sm text-white/90">{insight.message}</p>
+            {insights.map((insight) => {
+              const SeverityIcon = severityIcon[insight.severity] || Info;
+              return (
+                <div
+                  key={insight.id}
+                  className={`p-4 rounded-xl border ${severityStyles[insight.severity] || severityStyles.info}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <SeverityIcon size={18} className="mt-0.5 shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs uppercase tracking-widest text-white/40 mb-1">
+                        {insight.insight_type?.replace(/_/g, ' ')}
+                      </p>
+                      <p className="text-sm text-white/90">{insight.message}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

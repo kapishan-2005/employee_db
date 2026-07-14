@@ -13,6 +13,7 @@
  */
 
 import User from '../models/userModel.js';
+import Organization from '../models/organizationModel.js';
 import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/passwordUtils.js';
 import { generateToken } from '../utils/jwtUtils.js';
 
@@ -74,6 +75,7 @@ export const register = async (req, res) => {
     // ---- Bootstrap / access control ----
     const userCount = await User.count();
     let finalRole;
+    let organization_id;
 
     if (userCount === 0) {
       // First-ever account: always CEO, no auth required.
@@ -97,6 +99,10 @@ export const register = async (req, res) => {
           error: 'Only a CEO can create another CEO account',
         });
       }
+
+      // Every account created after bootstrap belongs to the creator's
+      // organization — this is what keeps each company's data isolated.
+      organization_id = creator.organization_id;
     }
 
     // Check if username already exists
@@ -118,14 +124,41 @@ export const register = async (req, res) => {
     // Hash password
     const password_hash = await hashPassword(password);
 
-    // Create user
-    const user = await User.create({
-      username,
-      email,
-      password_hash,
-      role: finalRole,
-      employee_id: employee_id || null
-    });
+    // For bootstrap (first-ever user), create their organization now that we
+    // know their user id will exist — create user first, then organization,
+    // then attach. Simpler: create the organization first with created_by
+    // filled in after.
+    let user;
+
+    if (userCount === 0) {
+      // Create the user first (temporarily without organization_id is not
+      // possible since the column is NOT NULL) — so create the organization
+      // first, then the user, then backfill created_by on the organization.
+      const org = await Organization.create({ name: `${username}'s Company` });
+      organization_id = org.id;
+
+      user = await User.create({
+        username,
+        email,
+        password_hash,
+        role: finalRole,
+        organization_id,
+        employee_id: employee_id || null
+      });
+
+      // Backfill created_by now that we have the user id
+      const { pool } = await import('../config/db.js');
+      await pool.execute('UPDATE organizations SET created_by = ? WHERE id = ?', [user.id, org.id]);
+    } else {
+      user = await User.create({
+        username,
+        email,
+        password_hash,
+        role: finalRole,
+        organization_id,
+        employee_id: employee_id || null
+      });
+    }
 
     // Generate JWT token (only useful for the bootstrap/self-registration case;
     // when an admin/CEO creates another user, the caller keeps their own token)
@@ -139,6 +172,7 @@ export const register = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        organization_id: user.organization_id,
         employee_id: user.employee_id
       },
       token
@@ -207,6 +241,7 @@ export const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        organization_id: user.organization_id,
         employee_id: user.employee_id,
         is_active: user.is_active
       },
@@ -216,6 +251,22 @@ export const login = async (req, res) => {
     console.error('Login error:', error);
     res.status(500).json({ 
       error: error.message || 'Error logging in' 
+    });
+  }
+};
+
+/**
+ * Get all users (CEO / Admin only)
+ * GET /api/auth/users
+ */
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findByOrganization(req.user.organization_id);
+    res.json({ users });
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({ 
+      error: error.message || 'Error fetching users' 
     });
   }
 };

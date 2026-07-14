@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Bot, LogIn, LogOut } from 'lucide-react';
 import attendanceService from '../services/attendanceService';
 import aiService from '../services/aiService';
 import { api, endpoints } from '../services/api';
@@ -42,7 +43,7 @@ const AttendanceIntelligence = () => {
     <div className="mb-8 rounded-2xl border border-white/8 bg-white/[0.02] p-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          🤖 AI Attendance Intelligence
+          <Bot size={18} className="text-indigo-300" /> AI Attendance Intelligence
         </h3>
         <button
           onClick={runAnalysis}
@@ -275,10 +276,10 @@ const AttendancePage = () => {
           permissions.canCheckIn && (
             <div className="flex gap-2">
               <Button variant="success" onClick={() => openModal('checkin')}>
-                <span className="text-lg leading-none">→</span> Check In
+                <LogIn size={16} /> Check In
               </Button>
               <Button variant="warning" onClick={() => openModal('checkout')}>
-                <span className="text-lg leading-none">←</span> Check Out
+                <LogOut size={16} /> Check Out
               </Button>
             </div>
           )

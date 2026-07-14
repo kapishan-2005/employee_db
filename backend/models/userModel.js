@@ -26,7 +26,23 @@ const User = {
   find: async () => {
     try {
       const [rows] = await pool.execute(
-        'SELECT id, username, email, role, employee_id, is_active, last_login, created_at FROM users ORDER BY created_at DESC'
+        'SELECT id, username, email, role, organization_id, employee_id, is_active, last_login, created_at FROM users ORDER BY created_at DESC'
+      );
+      return rows;
+    } catch (error) {
+      throw new Error(`Error fetching users: ${error.message}`);
+    }
+  },
+
+  /**
+   * Get all users scoped to a single organization (multi-tenant safe)
+   * @param {number} organizationId
+   */
+  findByOrganization: async (organizationId) => {
+    try {
+      const [rows] = await pool.execute(
+        'SELECT id, username, email, role, organization_id, employee_id, is_active, last_login, created_at FROM users WHERE organization_id = ? ORDER BY created_at DESC',
+        [organizationId]
       );
       return rows;
     } catch (error) {
@@ -42,7 +58,7 @@ const User = {
   findById: async (id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT id, username, email, role, employee_id, is_active, last_login, created_at FROM users WHERE id = ?',
+        'SELECT id, username, email, role, organization_id, employee_id, is_active, last_login, created_at FROM users WHERE id = ?',
         [id]
       );
       return rows[0] || null;
@@ -76,7 +92,7 @@ const User = {
   findByEmail: async (email) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT id, username, email, role, employee_id, is_active, last_login, created_at FROM users WHERE email = ?',
+        'SELECT id, username, email, role, organization_id, employee_id, is_active, last_login, created_at FROM users WHERE email = ?',
         [email]
       );
       return rows[0] || null;
@@ -106,11 +122,11 @@ const User = {
    */
   create: async (data) => {
     try {
-      const { username, email, password_hash, role = 'employee', employee_id = null } = data;
+      const { username, email, password_hash, role = 'employee', organization_id, employee_id = null } = data;
 
       const [result] = await pool.execute(
-        'INSERT INTO users (username, email, password_hash, role, employee_id) VALUES (?, ?, ?, ?, ?)',
-        [username, email, password_hash, role, employee_id]
+        'INSERT INTO users (username, email, password_hash, role, organization_id, employee_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [username, email, password_hash, role, organization_id, employee_id]
       );
 
       return {
@@ -118,6 +134,7 @@ const User = {
         username,
         email,
         role,
+        organization_id,
         employee_id,
         is_active: true
       };

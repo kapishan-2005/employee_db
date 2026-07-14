@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useToast } from '../hooks/useToast';
 import { useModal } from '../hooks/useModal';
@@ -255,17 +256,17 @@ export default function EmployeesPage() {
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {permissions.canAnalyzePerformance && (
                           <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'performance', emp })}>
-                            🤖 AI Score
+                            <Sparkles size={14} /> AI Score
                           </Button>
                         )}
                         {permissions.canEditEmployee && (
                           <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'edit', emp })}>
-                            Edit
+                            <Pencil size={14} /> Edit
                           </Button>
                         )}
                         {permissions.canDeleteEmployee && (
                           <Button variant="ghostDanger" size="sm" onClick={() => openModal({ type: 'delete', emp })}>
-                            Delete
+                            <Trash2 size={14} /> Delete
                           </Button>
                         )}
                         {!permissions.canEditEmployee && !permissions.canDeleteEmployee && (
