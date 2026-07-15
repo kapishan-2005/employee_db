@@ -52,7 +52,7 @@ export const getAllAttendance = async (req, res) => {
       });
     }
 
-    const filters = {};
+    const filters = { organization_id: req.user.organization_id };
     if (employee_id) filters.employee_id = employee_id;
     if (start_date) filters.start_date = start_date;
     if (end_date) filters.end_date = end_date;
@@ -92,7 +92,7 @@ export const getAttendanceById = async (req, res) => {
       });
     }
 
-    const record = await Attendance.findById(id);
+    const record = await Attendance.findById(id, req.user.organization_id);
 
     if (!record) {
       return res.status(404).json({
@@ -134,7 +134,7 @@ export const checkIn = async (req, res) => {
     }
 
     // Check if employee exists
-    const employee = await Employee.findById(employee_id);
+    const employee = await Employee.findById(employee_id, req.user.organization_id);
     if (!employee) {
       return res.status(404).json({
         success: false,
@@ -143,7 +143,7 @@ export const checkIn = async (req, res) => {
     }
 
     // Perform check-in
-    const record = await Attendance.checkIn(employee_id, notes);
+    const record = await Attendance.checkIn(employee_id, notes, req.user.organization_id);
 
     res.status(201).json({
       success: true,
@@ -186,7 +186,7 @@ export const checkOut = async (req, res) => {
     }
 
     // Check if employee exists
-    const employee = await Employee.findById(employee_id);
+    const employee = await Employee.findById(employee_id, req.user.organization_id);
     if (!employee) {
       return res.status(404).json({
         success: false,
@@ -195,7 +195,7 @@ export const checkOut = async (req, res) => {
     }
 
     // Perform check-out
-    const record = await Attendance.checkOut(employee_id, notes);
+    const record = await Attendance.checkOut(employee_id, notes, req.user.organization_id);
 
     res.json({
       success: true,
@@ -243,7 +243,7 @@ export const getEmployeeAttendance = async (req, res) => {
     }
 
     // Check if employee exists
-    const employee = await Employee.findById(employeeId);
+    const employee = await Employee.findById(employeeId, req.user.organization_id);
     if (!employee) {
       return res.status(404).json({
         success: false,
@@ -273,7 +273,7 @@ export const getEmployeeAttendance = async (req, res) => {
       });
     }
 
-    const filters = {};
+    const filters = { organization_id: req.user.organization_id };
     if (start_date) filters.start_date = start_date;
     if (end_date) filters.end_date = end_date;
     if (status) filters.status = status;
@@ -342,7 +342,7 @@ export const getAttendanceReport = async (req, res) => {
       });
     }
 
-    const filters = {};
+    const filters = { organization_id: req.user.organization_id };
     if (employee_id) filters.employee_id = employee_id;
     if (start_date) filters.start_date = start_date;
     if (end_date) filters.end_date = end_date;
@@ -377,7 +377,7 @@ export const updateAttendance = async (req, res) => {
     }
 
     // Check if record exists
-    const existing = await Attendance.findById(id);
+    const existing = await Attendance.findById(id, req.user.organization_id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -399,7 +399,7 @@ export const updateAttendance = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (notes !== undefined) updateData.notes = notes;
 
-    const record = await Attendance.update(id, updateData, { new: true });
+    const record = await Attendance.update(id, updateData, { new: true }, req.user.organization_id);
 
     res.json({
       success: true,

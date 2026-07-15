@@ -11,16 +11,18 @@ const Dashboard = {
    * Get overview statistics
    * @returns {Promise<Object>} Dashboard overview data
    */
-  getOverview: async () => {
+  getOverview: async (organization_id) => {
     try {
       // Get total employees
       const [employeeCount] = await pool.execute(
-        'SELECT COUNT(*) as total FROM employees'
+        'SELECT COUNT(*) as total FROM employees WHERE organization_id = ?',
+        [organization_id]
       );
 
       // Get total departments
       const [deptCount] = await pool.execute(
-        'SELECT COUNT(*) as total FROM departments WHERE is_active = 1'
+        'SELECT COUNT(*) as total FROM departments WHERE is_active = 1 AND organization_id = ?',
+        [organization_id]
       );
 
       // Get today's attendance stats
@@ -33,8 +35,8 @@ const Dashboard = {
           SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as late,
           SUM(CASE WHEN check_out IS NOT NULL THEN 1 ELSE 0 END) as checkedOut
         FROM attendance 
-        WHERE date = ?`,
-        [today]
+        WHERE date = ? AND organization_id = ?`,
+        [today, organization_id]
       );
 
       return {
@@ -57,12 +59,12 @@ const Dashboard = {
    * @param {number} employeeId - Employee ID
    * @returns {Promise<Object>} Employee dashboard data
    */
-  getEmployeeOverview: async (employeeId) => {
+  getEmployeeOverview: async (employeeId, organization_id) => {
     try {
       // Get employee info
       const [employee] = await pool.execute(
-        'SELECT id, name, course, roll_no FROM employees WHERE id = ?',
-        [employeeId]
+        'SELECT id, name, course, roll_no FROM employees WHERE id = ? AND organization_id = ?',
+        [employeeId, organization_id]
       );
 
       if (employee.length === 0) {
@@ -77,9 +79,9 @@ const Dashboard = {
           SUM(CASE WHEN status = 'late' THEN 1 ELSE 0 END) as lateDays,
           SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absentDays
         FROM attendance 
-        WHERE employee_id = ? 
+        WHERE employee_id = ? AND organization_id = ?
         AND date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
-        [employeeId]
+        [employeeId, organization_id]
       );
 
       // Get today's attendance
@@ -87,8 +89,8 @@ const Dashboard = {
       const [todayAttendance] = await pool.execute(
         `SELECT check_in, check_out, status 
         FROM attendance 
-        WHERE employee_id = ? AND date = ?`,
-        [employeeId, today]
+        WHERE employee_id = ? AND date = ? AND organization_id = ?`,
+        [employeeId, today, organization_id]
       );
 
       return {
@@ -111,15 +113,16 @@ const Dashboard = {
    * @param {number} limit - Number of records to fetch
    * @returns {Promise<Object>} Recent activity data
    */
-  getRecentActivity: async (limit = 10) => {
+  getRecentActivity: async (limit = 10, organization_id) => {
     try {
       // Recent employees
       const [recentEmployees] = await pool.execute(
         `SELECT id, name, course, roll_no, created_at 
         FROM employees 
+        WHERE organization_id = ?
         ORDER BY created_at DESC 
         LIMIT ?`,
-        [limit]
+        [organization_id, limit]
       );
 
       // Recent attendance (today)
@@ -136,19 +139,20 @@ const Dashboard = {
           a.date
         FROM attendance a
         JOIN employees e ON a.employee_id = e.id
-        WHERE a.date = ?
+        WHERE a.date = ? AND a.organization_id = ?
         ORDER BY a.check_in DESC
         LIMIT ?`,
-        [today, limit]
+        [today, organization_id, limit]
       );
 
       // Recent departments
       const [recentDepartments] = await pool.execute(
         `SELECT id, name, description, is_active, created_at 
         FROM departments 
+        WHERE organization_id = ?
         ORDER BY created_at DESC 
         LIMIT ?`,
-        [limit]
+        [organization_id, limit]
       );
 
       return {
@@ -167,7 +171,7 @@ const Dashboard = {
    * @param {number} limit - Number of records to fetch
    * @returns {Promise<Object>} Employee recent activity
    */
-  getEmployeeActivity: async (employeeId, limit = 10) => {
+  getEmployeeActivity: async (employeeId, limit = 10, organization_id) => {
     try {
       // Recent attendance for this employee
       const [recentAttendance] = await pool.execute(
@@ -179,10 +183,10 @@ const Dashboard = {
           status,
           notes
         FROM attendance
-        WHERE employee_id = ?
+        WHERE employee_id = ? AND organization_id = ?
         ORDER BY date DESC
         LIMIT ?`,
-        [employeeId, limit]
+        [employeeId, organization_id, limit]
       );
 
       return {

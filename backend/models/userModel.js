@@ -102,6 +102,23 @@ const User = {
   },
 
   /**
+   * Get user by email (for authentication — includes password_hash)
+   * @param {string} email - Email address
+   * @returns {Promise<Object|null>} User object (with password_hash) or null
+   */
+  findByEmailWithPassword: async (email) => {
+    try {
+      const [rows] = await pool.execute(
+        'SELECT * FROM users WHERE email = ?',
+        [email]
+      );
+      return rows[0] || null;
+    } catch (error) {
+      throw new Error(`Error fetching user by email: ${error.message}`);
+    }
+  },
+
+  /**
    * Count total users (used to detect first-run/bootstrap state)
    * @returns {Promise<number>}
    */

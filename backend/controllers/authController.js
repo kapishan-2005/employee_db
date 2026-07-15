@@ -204,8 +204,11 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user by username (this includes password_hash)
-    const user = await User.findByUsername(username);
+    // Find user by username OR email (accepts either for convenience)
+    let user = await User.findByUsername(username);
+    if (!user) {
+      user = await User.findByEmailWithPassword(username);
+    }
     if (!user) {
       return res.status(401).json({ 
         error: 'Invalid username or password' 
@@ -303,6 +306,7 @@ export const getCurrentUser = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        organization_id: user.organization_id,
         employee_id: user.employee_id,
         is_active: user.is_active,
         last_login: user.last_login,

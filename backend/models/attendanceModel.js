@@ -37,7 +37,8 @@ const Attendance = {
         LEFT JOIN departments d ON e.department_id = d.id
       `;
       const params = [];
-      const conditions = [];
+      const conditions = ['a.organization_id = ?'];
+      params.push(filters.organization_id);
 
       // Filter by employee_id
       if (filters.employee_id) {
@@ -96,7 +97,7 @@ const Attendance = {
    * @param {number} id - Attendance record ID
    * @returns {Promise<Object|null>} Attendance record or null
    */
-  findById: async (id) => {
+  findById: async (id, organization_id) => {
     try {
       const [rows] = await pool.execute(
         `SELECT 
@@ -105,8 +106,8 @@ const Attendance = {
           e.roll_no as employee_roll_no
         FROM attendance a
         LEFT JOIN employees e ON a.employee_id = e.id
-        WHERE a.id = ?`,
-        [id]
+        WHERE a.id = ? AND a.organization_id = ?`,
+        [id, organization_id]
       );
       return rows[0] || null;
     } catch (error) {
@@ -120,11 +121,11 @@ const Attendance = {
    * @param {string} date - Date (YYYY-MM-DD)
    * @returns {Promise<Object|null>} Attendance record or null
    */
-  findByEmployeeAndDate: async (employeeId, date) => {
+  findByEmployeeAndDate: async (employeeId, date, organization_id) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT * FROM attendance WHERE employee_id = ? AND date = ?',
-        [employeeId, date]
+        'SELECT * FROM attendance WHERE employee_id = ? AND date = ? AND organization_id = ?',
+        [employeeId, date, organization_id]
       );
       return rows[0] || null;
     } catch (error) {
@@ -138,13 +139,13 @@ const Attendance = {
    * @param {string} notes - Optional notes
    * @returns {Promise<Object>} Created/updated attendance record
    */
-  checkIn: async (employeeId, notes = null) => {
+  checkIn: async (employeeId, notes = null, organization_id) => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const currentTime = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
 
       // Check if attendance record already exists for today
-      const existing = await Attendance.findByEmployeeAndDate(employeeId, today);
+      const existing = await Attendance.findByEmployeeAndDate(employeeId, today, organization_id);
 
       if (existing) {
         // If already checked in, return error
@@ -155,7 +156,8 @@ const Attendance = {
         return await Attendance.findByIdAndUpdate(
           existing.id,
           { check_in: currentTime, notes },
-          { new: true }
+          { new: true },
+          organization_id
         );
       }
 
@@ -165,10 +167,11 @@ const Attendance = {
         date: today,
         check_in: currentTime,
         status: 'present',
-        notes
+        notes,
+        organization_id
       });
 
-      return await Attendance.findById(record.id);
+      return await Attendance.findById(record.id, organization_id);
     } catch (error) {
       throw error;
     }
@@ -180,13 +183,13 @@ const Attendance = {
    * @param {string} notes - Optional notes
    * @returns {Promise<Object>} Updated attendance record
    */
-  checkOut: async (employeeId, notes = null) => {
+  checkOut: async (employeeId, notes = null, organization_id) => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const currentTime = new Date().toTimeString().split(' ')[0]; // HH:MM:SS
 
       // Check if attendance record exists for today
-      const existing = await Attendance.findByEmployeeAndDate(employeeId, today);
+      const existing = await Attendance.findByEmployeeAndDate(employeeId, today, organization_id);
 
       if (!existing) {
         throw new Error('No check-in record found for today. Please check in first.');
@@ -209,7 +212,8 @@ const Attendance = {
       return await Attendance.findByIdAndUpdate(
         existing.id,
         updateData,
-        { new: true }
+        { new: true },
+        organization_id
       );
     } catch (error) {
       throw error;
@@ -223,11 +227,11 @@ const Attendance = {
    */
   create: async (data) => {
     try {
-      const { employee_id, date, check_in, status = 'present', notes } = data;
+      const { employee_id, date, check_in, status = 'present', notes, organization_id } = data;
 
       const [result] = await pool.execute(
-        'INSERT INTO attendance (employee_id, date, check_in, status, notes) VALUES (?, ?, ?, ?, ?)',
-        [employee_id, date, check_in || null, status, notes || null]
+        'INSERT INTO attendance (employee_id, date, check_in, status, notes, organization_id) VALUES (?, ?, ?, ?, ?, ?)',
+        [employee_id, date, check_in || null, status, notes || null, organization_id]
       );
 
       return {
@@ -236,7 +240,8 @@ const Attendance = {
         date,
         check_in: check_in || null,
         status,
-        notes: notes || null
+        notes: notes || null,
+        organization_id
       };
     } catch (error) {
       // Handle duplicate entry (employee already has attendance for this date)
@@ -254,7 +259,7 @@ const Attendance = {
    * @param {Object} options - Options (e.g., { new: true })
    * @returns {Promise<Object|null>} Updated attendance record or null
    */
-  update: async (id, data, options = {}) => {
+  update: async (id, data, options = {}, organization_id) => {
     try {
       const updates = [];
       const params = [];
@@ -281,10 +286,10 @@ const Attendance = {
         throw new Error('No fields to update');
       }
 
-      params.push(id);
+      params.push(id, organization_id);
 
       const [result] = await pool.execute(
-        `UPDATE attendance SET ${updates.join(', ')} WHERE id = ?`,
+        `UPDATE attendance SET ${updates.join(', ')} WHERE id = ? AND organization_id = ?`,
         params
       );
 
@@ -293,7 +298,7 @@ const Attendance = {
       }
 
       if (options.new) {
-        return await Attendance.findById(id);
+        return await Attendance.findById(id, organization_id);
       }
 
       return { id: parseInt(id), ...data };
@@ -303,8 +308,8 @@ const Attendance = {
   },
 
   // Alias for backward compatibility
-  findByIdAndUpdate: async (id, data, options = {}) => {
-    return Attendance.update(id, data, options);
+  findByIdAndUpdate: async (id, data, options = {}, organization_id) => {
+    return Attendance.update(id, data, options, organization_id);
   },
 
   /**
@@ -312,11 +317,11 @@ const Attendance = {
    * @param {number} id - Attendance record ID
    * @returns {Promise<Object|null>} Deleted record info or null
    */
-  findByIdAndDelete: async (id) => {
+  findByIdAndDelete: async (id, organization_id) => {
     try {
       const [result] = await pool.execute(
-        'DELETE FROM attendance WHERE id = ?',
-        [id]
+        'DELETE FROM attendance WHERE id = ? AND organization_id = ?',
+        [id, organization_id]
       );
 
       return result.affectedRows > 0 ? { id: parseInt(id) } : null;
@@ -340,9 +345,9 @@ const Attendance = {
           e.roll_no as employee_roll_no
         FROM attendance a
         LEFT JOIN employees e ON a.employee_id = e.id
-        WHERE a.employee_id = ?
+        WHERE a.employee_id = ? AND a.organization_id = ?
       `;
-      const params = [employeeId];
+      const params = [employeeId, filters.organization_id];
 
       // Add date range filters if provided
       if (filters.start_date) {

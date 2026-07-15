@@ -21,7 +21,7 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
 export const chat = async (req, res) => {
   try {
     const { question } = req.body;
-    const { id: userId, role, employee_id } = req.user;
+    const { id: userId, role, employee_id, organization_id } = req.user;
 
     if (!question || !question.trim()) {
       return errorResponse(res, 'Question is required', 400);
@@ -32,17 +32,17 @@ export const chat = async (req, res) => {
     // Build light context depending on role so answers are grounded in real data
     let contextText = '';
     if (role === 'ceo' || role === 'admin') {
-      const context = await AI.getCompanyContext();
+      const context = await AI.getCompanyContext(organization_id);
       contextText = `Company context: ${JSON.stringify(context)}`;
     } else if (employee_id) {
-      const context = await AI.getEmployeePerformanceContext(employee_id);
+      const context = await AI.getEmployeePerformanceContext(employee_id, organization_id);
       contextText = `Employee context: ${JSON.stringify(context)}`;
     }
 
     const prompt = `${contextText}\n\nQuestion: ${question}`;
     const answer = await askGemini(persona, prompt);
 
-    await AI.saveChat({ user_id: userId, question, answer });
+    await AI.saveChat({ user_id: userId, question, answer, organization_id });
 
     return successResponse(res, { answer }, 'AI response generated');
   } catch (error) {
@@ -56,7 +56,7 @@ export const chat = async (req, res) => {
  */
 export const getChatHistory = async (req, res) => {
   try {
-    const history = await AI.getChatHistory(req.user.id, 30);
+    const history = await AI.getChatHistory(req.user.id, 30, req.user.organization_id);
     return successResponse(res, { history });
   } catch (error) {
     console.error('AI chat history error:', error);
@@ -69,7 +69,7 @@ export const getChatHistory = async (req, res) => {
  */
 export const getInsights = async (req, res) => {
   try {
-    const insights = await AI.getInsightsForUser(req.user.id, 20);
+    const insights = await AI.getInsightsForUser(req.user.id, 20, req.user.organization_id);
     return successResponse(res, { insights });
   } catch (error) {
     console.error('AI insights fetch error:', error);
@@ -83,8 +83,8 @@ export const getInsights = async (req, res) => {
  */
 export const generateInsights = async (req, res) => {
   try {
-    const { id: userId, role } = req.user;
-    const context = await AI.getCompanyContext();
+    const { id: userId, role, organization_id } = req.user;
+    const context = await AI.getCompanyContext(organization_id);
 
     const persona = getPersonaForRole(role);
     const prompt = `Given this workforce data: ${JSON.stringify(context)}
@@ -115,6 +115,7 @@ concrete recommendation. Output only these lines, nothing else.`;
         severity: ['info', 'warning', 'critical'].includes(severity.trim())
           ? severity.trim()
           : 'info',
+        organization_id
       });
       insights.push(saved);
     }
@@ -134,7 +135,7 @@ concrete recommendation. Output only these lines, nothing else.`;
 export const analyzePerformance = async (req, res) => {
   try {
     const { employeeId } = req.params;
-    const context = await AI.getEmployeePerformanceContext(employeeId);
+    const context = await AI.getEmployeePerformanceContext(employeeId, req.user.organization_id);
 
     if (!context.employee) {
       return errorResponse(res, 'Employee not found', 404);
@@ -194,6 +195,7 @@ export const attendanceIntelligence = async (req, res) => {
     const patterns = await AI.getAttendancePatterns({
       lateThreshold: 3,
       absentThreshold: 3,
+      organization_id: req.user.organization_id,
     });
 
     const persona = getPersonaForRole(req.user.role);

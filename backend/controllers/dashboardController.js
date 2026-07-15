@@ -15,7 +15,7 @@ import Dashboard from '../models/dashboardModel.js';
  */
 export const getOverview = async (req, res) => {
   try {
-    const { role, employee_id } = req.user;
+    const { role, employee_id, organization_id } = req.user;
 
     // Employee role: return personal overview
     if (role === 'employee') {
@@ -26,7 +26,7 @@ export const getOverview = async (req, res) => {
         });
       }
 
-      const data = await Dashboard.getEmployeeOverview(employee_id);
+      const data = await Dashboard.getEmployeeOverview(employee_id, organization_id);
       return res.json({
         success: true,
         data,
@@ -34,8 +34,8 @@ export const getOverview = async (req, res) => {
       });
     }
 
-    // Admin/Manager: return full overview
-    const data = await Dashboard.getOverview();
+    // Admin/Manager/CEO: return full overview
+    const data = await Dashboard.getOverview(organization_id);
     res.json({
       success: true,
       data,
@@ -58,7 +58,7 @@ export const getOverview = async (req, res) => {
  */
 export const getRecentActivity = async (req, res) => {
   try {
-    const { role, employee_id } = req.user;
+    const { role, employee_id, organization_id } = req.user;
     const limit = parseInt(req.query.limit) || 10;
 
     // Employee role: return personal activity
@@ -70,7 +70,7 @@ export const getRecentActivity = async (req, res) => {
         });
       }
 
-      const data = await Dashboard.getEmployeeActivity(employee_id, limit);
+      const data = await Dashboard.getEmployeeActivity(employee_id, limit, organization_id);
       return res.json({
         success: true,
         data,
@@ -78,8 +78,8 @@ export const getRecentActivity = async (req, res) => {
       });
     }
 
-    // Admin/Manager: return all recent activity
-    const data = await Dashboard.getRecentActivity(limit);
+    // Admin/Manager/CEO: return all recent activity
+    const data = await Dashboard.getRecentActivity(limit, organization_id);
     res.json({
       success: true,
       data,

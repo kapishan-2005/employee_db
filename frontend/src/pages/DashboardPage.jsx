@@ -1,4 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Users2,
+  Building2,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Calendar,
+  User,
+  LogIn,
+  LogOut,
+  ClipboardList,
+  Plus,
+  BarChart3,
+  UserPlus,
+  Target,
+  Sparkles,
+} from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useFetch } from '../hooks/useFetch';
 import dashboardService from '../services/dashboardService';
@@ -10,6 +28,15 @@ import QuickActions from '../components/dashboard/QuickActions';
 
 const DashboardPage = () => {
   const permissions = usePermissions();
+  const navigate = useNavigate();
+
+  // CEOs get a dedicated, richer view at /ceo/dashboard (company overview +
+  // AI insights) — send them straight there instead of the generic view.
+  useEffect(() => {
+    if (permissions.isCEO) {
+      navigate('/ceo/dashboard', { replace: true });
+    }
+  }, [permissions.isCEO, navigate]);
 
   const fetchOverview = useCallback(async () => {
     const response = await dashboardService.getOverview();
@@ -38,7 +65,7 @@ const DashboardPage = () => {
     return () => clearInterval(intervalRef.current);
   }, [refetchOverview, refetchActivity]);
 
-  if (overviewLoading || activityLoading) {
+  if (overviewLoading || activityLoading || permissions.isCEO) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-10">
         <LoadingSpinner message="Loading dashboard..." />
@@ -61,7 +88,7 @@ const DashboardPage = () => {
     }
 
     const attendanceItems = recentAttendance.map((record) => ({
-      icon: '📅',
+      icon: <Calendar size={16} />,
       title: new Date(record.date).toLocaleDateString(),
       subtitle: `${record.check_in ? record.check_in.substring(0, 5) : '—'} - ${record.check_out ? record.check_out.substring(0, 5) : '—'}`,
       badge: record.status,
@@ -74,10 +101,10 @@ const DashboardPage = () => {
     }));
 
     const quickActions = [
-      { label: 'Check In', icon: '→', variant: 'success', path: '/attendance' },
-      { label: 'Check Out', icon: '←', variant: 'warning', path: '/attendance' },
-      { label: 'View Attendance', icon: '📋', variant: 'primary', path: '/attendance' },
-      { label: 'My Profile', icon: '👤', variant: 'secondary', path: '/employees' },
+      { label: 'Check In', icon: <LogIn size={16} />, variant: 'success', path: '/attendance' },
+      { label: 'Check Out', icon: <LogOut size={16} />, variant: 'warning', path: '/attendance' },
+      { label: 'View Attendance', icon: <ClipboardList size={16} />, variant: 'primary', path: '/attendance' },
+      { label: 'My Profile', icon: <User size={16} />, variant: 'secondary', path: '/employees' },
     ];
 
     return (
@@ -99,25 +126,25 @@ const DashboardPage = () => {
           <DashboardCard
             title="Total Days"
             value={stats?.totalDays || 0}
-            icon="📊"
+            icon={<BarChart3 size={20} />}
             color="indigo"
           />
           <DashboardCard
             title="Present"
             value={stats?.presentDays || 0}
-            icon="✓"
+            icon={<CheckCircle2 size={20} />}
             color="emerald"
           />
           <DashboardCard
             title="Late"
             value={stats?.lateDays || 0}
-            icon="⏰"
+            icon={<Clock size={20} />}
             color="orange"
           />
           <DashboardCard
             title="Absent"
             value={stats?.absentDays || 0}
-            icon="✕"
+            icon={<XCircle size={20} />}
             color="red"
           />
         </div>
@@ -168,7 +195,7 @@ const DashboardPage = () => {
     );
   }
 
-  // Admin/Manager Dashboard
+  // Admin (HR) / Manager Dashboard
   const overviewData = overview?.data || {};
   const activityData = activity?.data || {};
 
@@ -177,7 +204,7 @@ const DashboardPage = () => {
   const recentDepartments = activityData.recentDepartments || [];
 
   const employeeItems = recentEmployees.map((emp) => ({
-    icon: '👤',
+    icon: <User size={16} />,
     title: emp.name,
     subtitle: `${emp.course} • ${emp.roll_no}`,
     badge: 'New',
@@ -185,7 +212,7 @@ const DashboardPage = () => {
   }));
 
   const attendanceItems = recentAttendance.map((record) => ({
-    icon: record.check_out ? '←' : '→',
+    icon: record.check_out ? <LogOut size={16} /> : <LogIn size={16} />,
     title: record.employee_name,
     subtitle: `${record.check_in ? record.check_in.substring(0, 5) : '—'} ${
       record.check_out ? `- ${record.check_out.substring(0, 5)}` : ''
@@ -200,7 +227,7 @@ const DashboardPage = () => {
   }));
 
   const departmentItems = recentDepartments.map((dept) => ({
-    icon: '🏢',
+    icon: <Building2 size={16} />,
     title: dept.name,
     subtitle: dept.description || 'No description',
     badge: dept.is_active ? 'Active' : 'Inactive',
@@ -209,17 +236,30 @@ const DashboardPage = () => {
       : 'bg-red-500/15 text-red-300',
   }));
 
-  const quickActions = [
-    { label: 'Add Employee', icon: '+', variant: 'primary', path: '/employees' },
-    { label: 'Add Department', icon: '+', variant: 'primary', path: '/departments' },
-    { label: 'Check In', icon: '→', variant: 'success', path: '/attendance' },
-    { label: 'View Reports', icon: '📊', variant: 'secondary', path: '/attendance' },
+  // HR/Admin: people-ops focused actions (hiring, org structure, reports)
+  const adminActions = [
+    { label: 'Add Employee', icon: <UserPlus size={16} />, variant: 'primary', path: '/employees' },
+    { label: 'Post a Role', icon: <Target size={16} />, variant: 'primary', path: '/recruitment' },
+    { label: 'Add Department', icon: <Plus size={16} />, variant: 'secondary', path: '/departments' },
+    { label: 'Attendance Reports', icon: <BarChart3 size={16} />, variant: 'secondary', path: '/attendance' },
   ];
+
+  // Manager: team-execution focused actions (no org-structure changes)
+  const managerActions = [
+    { label: 'Check In', icon: <LogIn size={16} />, variant: 'success', path: '/attendance' },
+    { label: 'Team Attendance', icon: <ClipboardList size={16} />, variant: 'primary', path: '/attendance' },
+    { label: 'Team Directory', icon: <Users2 size={16} />, variant: 'secondary', path: '/employees' },
+    { label: 'AI Team Insights', icon: <Sparkles size={16} />, variant: 'secondary', path: '/employees' },
+  ];
+
+  const quickActions = permissions.isAdmin ? adminActions : managerActions;
+  const pageTitle = permissions.isAdmin ? 'HR Dashboard' : 'Team Dashboard';
+  const pageSubtitle = permissions.isAdmin ? 'People operations overview' : 'Your team at a glance';
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
       <div className="flex items-center justify-between">
-        <PageHeader title="Dashboard" subtitle="Overview" />
+        <PageHeader title={pageTitle} subtitle={pageSubtitle} />
         <div className="flex items-center gap-2 text-xs text-white/40">
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           Live • Updated {lastUpdated.toLocaleTimeString()}
@@ -228,36 +268,36 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <DashboardCard
-          title="Total Employees"
+          title={permissions.isAdmin ? 'Total Employees' : 'Team Size'}
           value={overviewData.totalEmployees || 0}
-          icon="👥"
+          icon={<Users2 size={20} />}
           color="indigo"
         />
         <DashboardCard
           title="Departments"
           value={overviewData.totalDepartments || 0}
-          icon="🏢"
+          icon={<Building2 size={20} />}
           color="violet"
         />
         <DashboardCard
           title="Present Today"
           value={overviewData.presentToday || 0}
           subtitle={`${overviewData.attendanceToday || 0} total`}
-          icon="✓"
+          icon={<CheckCircle2 size={20} />}
           color="emerald"
         />
         <DashboardCard
           title="Late Today"
           value={overviewData.lateToday || 0}
           subtitle={`${overviewData.absentToday || 0} absent`}
-          icon="⏰"
+          icon={<Clock size={20} />}
           color="orange"
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ActivityList
-          title="Recent Employees"
+          title={permissions.isAdmin ? 'Recent Employees' : 'Recent Team Updates'}
           items={employeeItems.slice(0, 5)}
           emptyMessage="No recent employees"
         />
@@ -269,11 +309,22 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ActivityList
-          title="Recent Departments"
-          items={departmentItems.slice(0, 5)}
-          emptyMessage="No recent departments"
-        />
+        {permissions.isAdmin ? (
+          <ActivityList
+            title="Recent Departments"
+            items={departmentItems.slice(0, 5)}
+            emptyMessage="No recent departments"
+          />
+        ) : (
+          <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-6">
+            <h3 className="text-lg font-semibold text-white mb-2">Tip</h3>
+            <p className="text-sm text-white/50">
+              Use the AI assistant (bottom-right) to ask things like "how's my
+              team doing?" or "any workload issues this week?" — it's tuned
+              for managers.
+            </p>
+          </div>
+        )}
         <QuickActions actions={quickActions} />
       </div>
     </div>

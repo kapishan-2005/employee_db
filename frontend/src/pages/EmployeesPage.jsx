@@ -110,17 +110,17 @@ const EmployeeForm = ({ initial = { name: '', course: '', roll_no: '' }, onSubmi
         required
       />
       <Input
-        label="Course"
+        label="Position / Title"
         value={form.course}
         onChange={handleChange('course')}
-        placeholder="e.g. B.Tech CSE"
+        placeholder="e.g. Software Engineer"
         required
       />
       <Input
-        label="Roll No."
+        label="Employee ID"
         value={form.roll_no}
         onChange={handleChange('roll_no')}
-        placeholder="e.g. CS2024001"
+        placeholder="e.g. EMP2024001"
         required
       />
       <Button type="submit" disabled={loading} className="w-full mt-2">
@@ -207,21 +207,21 @@ export default function EmployeesPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
           <StatCard label="Total Employees" value={employees.length} />
-          <StatCard label="Courses" value={courses} accent="border-violet-500/20" />
+          <StatCard label="Positions" value={courses} accent="border-violet-500/20" />
           <StatCard label="Search Results" value={filtered.length} accent="border-sky-500/20" />
-        </div>
+          </div>
 
-        <SearchBar
+          <SearchBar
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, course, or roll no…"
-        />
+          placeholder="Search by name, position, or employee ID…"
+          />
 
         <div className="rounded-2xl border border-white/8 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-white/[0.04] border-b border-white/8">
-                {['#', 'Name', 'Course', 'Roll No.', 'Actions'].map((h) => (
+                {['#', 'Name', 'Position', 'Employee ID', 'Actions'].map((h) => (
                   <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold text-white/40 tracking-widest uppercase">
                     {h}
                   </th>

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import userService from '../../services/userService';
+import { api, endpoints } from '../../services/api';
 import PageHeader from '../../components/common/PageHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Input from '../../components/common/Input';
@@ -13,6 +14,11 @@ const roleBadge = {
   manager: 'bg-sky-500/15 text-sky-300 border-sky-500/20',
   employee: 'bg-white/10 text-white/60 border-white/10',
 };
+
+// Roles that should also get an HR/Employee-directory profile (so they show
+// up in the Employees tab, count towards Total Employees on the Dashboard,
+// and can check in/out for attendance tracking)
+const NEEDS_EMPLOYEE_PROFILE = ['employee', 'manager', 'admin'];
 
 const CEOUsers = () => {
   const fetchUsers = useCallback(async () => await userService.list(), []);
@@ -29,6 +35,8 @@ const CEOUsers = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  const needsProfile = NEEDS_EMPLOYEE_PROFILE.includes(form.role);
+
   const handleChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
@@ -39,7 +47,21 @@ const CEOUsers = () => {
     setError(null);
     setSuccess(null);
     try {
-      await userService.create(form);
+      let employee_id = null;
+
+      // For Employee / Manager roles, also create the matching HR record
+      // (Employees table) so they appear in the Employee Directory and count
+      // towards Dashboard totals, not just the login-only Users list.
+      if (needsProfile) {
+        const employeeResponse = await api.post(endpoints.employees.create, {
+          name: form.username,
+          course: form.role === 'manager' ? 'Manager' : form.role === 'admin' ? 'HR / Admin' : 'Employee',
+          roll_no: `EMP-${Date.now().toString().slice(-6)}`,
+        });
+        employee_id = employeeResponse?.data?.id;
+      }
+
+      await userService.create({ ...form, employee_id });
       setSuccess(`${form.username} created as ${form.role}`);
       setForm({ username: '', email: '', password: '', role: 'employee' });
       await refetch();
@@ -77,7 +99,7 @@ const CEOUsers = () => {
 
           <div>
             <label className="block text-xs uppercase tracking-widest text-white/40 mb-2">
-              Username
+              Username / Full Name
             </label>
             <Input name="username" value={form.username} onChange={handleChange} required />
           </div>
@@ -118,6 +140,12 @@ const CEOUsers = () => {
               required
             />
           </div>
+
+          {needsProfile && (
+            <div className="p-3 rounded-lg border border-indigo-500/15 bg-indigo-500/5 text-xs text-indigo-200">
+              This role also gets an Employee Directory profile automatically (ID auto-generated).
+            </div>
+          )}
 
           <Button type="submit" disabled={creating} className="w-full">
             {creating ? 'Creating…' : '+ Create Account'}

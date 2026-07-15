@@ -37,7 +37,7 @@ const SignupPage = () => {
         email: formData.email,
         password: formData.password,
       });
-      navigate('/ceo/dashboard', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Sign up failed. Please try again.');
     } finally {
