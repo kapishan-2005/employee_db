@@ -369,8 +369,8 @@ const Attendance = {
 
       // Add limit if provided
       if (filters.limit) {
-        query += ' LIMIT ?';
-        params.push(parseInt(filters.limit));
+        const safeLimit = Math.max(1, parseInt(filters.limit) || 10);
+        query += ` LIMIT ${safeLimit}`;
       }
 
       const [rows] = await pool.execute(query, params);

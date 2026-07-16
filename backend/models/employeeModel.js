@@ -33,17 +33,24 @@ const Employee = {
     const total = countResult[0].total;
     
     // Get paginated results
-    const offset = (page - 1) * limit;
-    const dataQuery = `SELECT * FROM employees ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`;
-    const [rows] = await pool.execute(dataQuery, [...params, parseInt(limit), parseInt(offset)]);
+    // NOTE: LIMIT/OFFSET are embedded directly (not as ? placeholders) because
+    // mysql2 prepared statements can fail with "Incorrect arguments to
+    // mysqld_stmt_execute" when LIMIT/OFFSET are bound params on some
+    // MySQL server versions. Values are sanitized with parseInt first, so
+    // this is safe from SQL injection.
+    const safeLimit = Math.max(1, parseInt(limit) || 10);
+    const safePage = Math.max(1, parseInt(page) || 1);
+    const offset = (safePage - 1) * safeLimit;
+    const dataQuery = `SELECT * FROM employees ${whereClause} ORDER BY id DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    const [rows] = await pool.execute(dataQuery, params);
     
     return {
       data: rows,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: safePage,
+        limit: safeLimit,
         total,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / safeLimit)
       }
     };
   },

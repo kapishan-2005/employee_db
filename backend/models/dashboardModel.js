@@ -115,14 +115,16 @@ const Dashboard = {
    */
   getRecentActivity: async (limit = 10, organization_id) => {
     try {
+      const safeLimit = Math.max(1, parseInt(limit) || 10);
+
       // Recent employees
       const [recentEmployees] = await pool.execute(
         `SELECT id, name, course, roll_no, created_at 
         FROM employees 
         WHERE organization_id = ?
         ORDER BY created_at DESC 
-        LIMIT ?`,
-        [organization_id, limit]
+        LIMIT ${safeLimit}`,
+        [organization_id]
       );
 
       // Recent attendance (today)
@@ -141,8 +143,8 @@ const Dashboard = {
         JOIN employees e ON a.employee_id = e.id
         WHERE a.date = ? AND a.organization_id = ?
         ORDER BY a.check_in DESC
-        LIMIT ?`,
-        [today, organization_id, limit]
+        LIMIT ${safeLimit}`,
+        [today, organization_id]
       );
 
       // Recent departments
@@ -151,8 +153,8 @@ const Dashboard = {
         FROM departments 
         WHERE organization_id = ?
         ORDER BY created_at DESC 
-        LIMIT ?`,
-        [organization_id, limit]
+        LIMIT ${safeLimit}`,
+        [organization_id]
       );
 
       return {
@@ -173,6 +175,7 @@ const Dashboard = {
    */
   getEmployeeActivity: async (employeeId, limit = 10, organization_id) => {
     try {
+      const safeLimit = Math.max(1, parseInt(limit) || 10);
       // Recent attendance for this employee
       const [recentAttendance] = await pool.execute(
         `SELECT 
@@ -185,8 +188,8 @@ const Dashboard = {
         FROM attendance
         WHERE employee_id = ? AND organization_id = ?
         ORDER BY date DESC
-        LIMIT ?`,
-        [employeeId, organization_id, limit]
+        LIMIT ${safeLimit}`,
+        [employeeId, organization_id]
       );
 
       return {

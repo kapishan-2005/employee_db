@@ -28,9 +28,10 @@ const AI = {
 
   getInsightsForUser: async (user_id, limit = 20, organization_id) => {
     try {
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
       const [rows] = await pool.execute(
-        `SELECT * FROM ai_insights WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT ?`,
-        [user_id, organization_id, limit]
+        `SELECT * FROM ai_insights WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT ${safeLimit}`,
+        [user_id, organization_id]
       );
       return rows;
     } catch (error) {
@@ -56,9 +57,10 @@ const AI = {
 
   getChatHistory: async (user_id, limit = 20, organization_id) => {
     try {
+      const safeLimit = Math.max(1, parseInt(limit) || 20);
       const [rows] = await pool.execute(
-        `SELECT * FROM ai_chat_history WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT ?`,
-        [user_id, organization_id, limit]
+        `SELECT * FROM ai_chat_history WHERE user_id = ? AND organization_id = ? ORDER BY created_at DESC LIMIT ${safeLimit}`,
+        [user_id, organization_id]
       );
       return rows.reverse(); // oldest first for chat display
     } catch (error) {
