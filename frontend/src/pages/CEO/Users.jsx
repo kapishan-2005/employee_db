@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFetch } from '../../hooks/useFetch';
 import userService from '../../services/userService';
 import { api, endpoints } from '../../services/api';
@@ -15,21 +15,34 @@ const roleBadge = {
   employee: 'bg-white/10 text-white/60 border-white/10',
 };
 
-// Roles that should also get an HR/Employee-directory profile (so they show
-// up in the Employees tab, count towards Total Employees on the Dashboard,
-// and can check in/out for attendance tracking)
+// Roles that represent people who work at the company (as opposed to a
+// pure system-admin login) and should have an Employee Directory profile.
 const NEEDS_EMPLOYEE_PROFILE = ['employee', 'manager', 'admin'];
 
 const CEOUsers = () => {
   const fetchUsers = useCallback(async () => await userService.list(), []);
-  const { data, loading, refetch } = useFetch(fetchUsers);
-  const users = data?.users || [];
+  const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useFetch(fetchUsers);
+  const users = usersData?.users || [];
 
+  const fetchEmployees = useCallback(async () => {
+    const res = await api.get(endpoints.employees.list);
+    return res?.data || [];
+  }, []);
+  const { data: employees, loading: employeesLoading, refetch: refetchEmployees } = useFetch(fetchEmployees);
+
+  // Employees that don't already have a login account linked to them
+  const unlinkedEmployees = useMemo(() => {
+    const linkedIds = new Set(users.map((u) => u.employee_id).filter(Boolean));
+    return employees.filter((e) => !linkedIds.has(e.id));
+  }, [employees, users]);
+
+  const [mode, setMode] = useState('new'); // 'new' | 'existing'
   const [form, setForm] = useState({
     username: '',
     email: '',
     password: '',
     role: 'employee',
+    employee_id: '',
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
@@ -41,6 +54,16 @@ const CEOUsers = () => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
+  const handleEmployeeSelect = (e) => {
+    const empId = e.target.value;
+    const emp = employees.find((x) => String(x.id) === String(empId));
+    setForm((f) => ({
+      ...f,
+      employee_id: empId,
+      username: emp ? emp.name.toLowerCase().replace(/\s+/g, '.') : f.username,
+    }));
+  };
+
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
@@ -49,10 +72,13 @@ const CEOUsers = () => {
     try {
       let employee_id = null;
 
-      // For Employee / Manager roles, also create the matching HR record
-      // (Employees table) so they appear in the Employee Directory and count
-      // towards Dashboard totals, not just the login-only Users list.
-      if (needsProfile) {
+      if (mode === 'existing') {
+        if (!form.employee_id) {
+          throw new Error('Please select an employee to link this login to');
+        }
+        employee_id = parseInt(form.employee_id);
+      } else if (needsProfile) {
+        // Create a brand-new HR profile (Employees table) linked to this login
         const employeeResponse = await api.post(endpoints.employees.create, {
           name: form.username,
           course: form.role === 'manager' ? 'Manager' : form.role === 'admin' ? 'HR / Admin' : 'Employee',
@@ -63,8 +89,8 @@ const CEOUsers = () => {
 
       await userService.create({ ...form, employee_id });
       setSuccess(`${form.username} created as ${form.role}`);
-      setForm({ username: '', email: '', password: '', role: 'employee' });
-      await refetch();
+      setForm({ username: '', email: '', password: '', role: 'employee', employee_id: '' });
+      await Promise.all([refetchUsers(), refetchEmployees()]);
     } catch (err) {
       setError(err.message || 'Failed to create account');
     } finally {
@@ -72,18 +98,23 @@ const CEOUsers = () => {
     }
   };
 
+  const employeeOptions = unlinkedEmployees.map((e) => ({
+    value: e.id,
+    label: `${e.name} — ${e.course} (${e.roll_no})`,
+  }));
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <PageHeader title="Manage Users" subtitle="Create HR, Manager, and Employee accounts" />
+      <PageHeader title="Manage Users" subtitle="Grant login access to CEO, HR, Manager, and Employee accounts" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 mt-6">
         {/* Create form */}
         <form
           onSubmit={handleCreate}
           className="rounded-2xl border border-white/8 bg-white/[0.02] p-6 space-y-4 h-fit"
         >
           <h3 className="text-sm font-semibold text-white/70 uppercase tracking-widest mb-1">
-            Create Account
+            Grant Login Access
           </h3>
 
           {error && (
@@ -97,9 +128,49 @@ const CEOUsers = () => {
             </div>
           )}
 
+          {/* Mode toggle */}
+          <div className="grid grid-cols-2 gap-2 p-1 rounded-lg bg-white/5 border border-white/10">
+            <button
+              type="button"
+              onClick={() => setMode('new')}
+              className={`py-2 rounded-md text-xs font-semibold transition-colors ${
+                mode === 'new' ? 'bg-indigo-500 text-white' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              New Person
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('existing')}
+              className={`py-2 rounded-md text-xs font-semibold transition-colors ${
+                mode === 'existing' ? 'bg-indigo-500 text-white' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              Existing Employee
+            </button>
+          </div>
+
+          {mode === 'existing' && (
+            <div>
+              <Select
+                label="Employee"
+                value={form.employee_id}
+                onChange={handleEmployeeSelect}
+                placeholder={employeesLoading ? 'Loading...' : 'Select an employee'}
+                options={employeeOptions}
+                required
+              />
+              {!employeesLoading && employeeOptions.length === 0 && (
+                <p className="text-xs text-white/30 mt-2">
+                  Every employee already has a login. Switch to "New Person" to add someone new.
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-xs uppercase tracking-widest text-white/40 mb-2">
-              Username / Full Name
+              Username
             </label>
             <Input name="username" value={form.username} onChange={handleChange} required />
           </div>
@@ -141,26 +212,26 @@ const CEOUsers = () => {
             />
           </div>
 
-          {needsProfile && (
+          {mode === 'new' && needsProfile && (
             <div className="p-3 rounded-lg border border-indigo-500/15 bg-indigo-500/5 text-xs text-indigo-200">
-              This role also gets an Employee Directory profile automatically (ID auto-generated).
+              A new Employee Directory profile will be created automatically for this login.
             </div>
           )}
 
           <Button type="submit" disabled={creating} className="w-full">
-            {creating ? 'Creating…' : '+ Create Account'}
+            {creating ? 'Creating…' : '+ Grant Access'}
           </Button>
         </form>
 
         {/* User list */}
-        <div className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.02] overflow-hidden h-fit">
           <div className="px-5 py-4 border-b border-white/8">
             <h3 className="text-sm font-semibold text-white/70 uppercase tracking-widest">
               All Accounts ({users.length})
             </h3>
           </div>
 
-          {loading ? (
+          {usersLoading ? (
             <div className="p-8">
               <LoadingSpinner message="Loading users..." />
             </div>

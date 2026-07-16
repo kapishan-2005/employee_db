@@ -205,6 +205,13 @@ export default function EmployeesPage() {
           }
         />
 
+        {permissions.isCEO && (
+          <p className="text-xs text-white/30 -mt-6 mb-8">
+            This adds an HR profile only (no login access). To give someone a
+            login, use <span className="text-indigo-300">Manage Users</span>.
+          </p>
+        )}
+
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
           <StatCard label="Total Employees" value={employees.length} />
           <StatCard label="Positions" value={courses} accent="border-violet-500/20" />

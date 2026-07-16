@@ -248,6 +248,38 @@ const AttendancePage = () => {
     }
   };
 
+  // Self-service check-in/out — acts on the logged-in user's own employee
+  // record directly, no employee picker needed.
+  const handleSelfCheckIn = async () => {
+    setSaving(true);
+    try {
+      const response = await attendanceService.checkIn({
+        employee_id: permissions.employeeId,
+      });
+      showSuccess(response.message || 'Checked in!');
+      refetch();
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelfCheckOut = async () => {
+    setSaving(true);
+    try {
+      const response = await attendanceService.checkOut({
+        employee_id: permissions.employeeId,
+      });
+      showSuccess(response.message || 'Checked out!');
+      refetch();
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const formatTime = (time) => (time ? time.substring(0, 5) : '—');
   const formatDate = (date) => (date ? new Date(date).toLocaleDateString() : '—');
 
@@ -273,15 +305,30 @@ const AttendancePage = () => {
         title="Attendance Tracking"
         subtitle="Management System"
         action={
-          permissions.canCheckIn && (
+          permissions.employeeId ? (
+            // Self-service: this user has their own employee record — act on it
+            // directly, no picker needed.
             <div className="flex gap-2">
-              <Button variant="success" onClick={() => openModal('checkin')}>
+              <Button variant="success" onClick={handleSelfCheckIn} disabled={saving}>
                 <LogIn size={16} /> Check In
               </Button>
-              <Button variant="warning" onClick={() => openModal('checkout')}>
+              <Button variant="warning" onClick={handleSelfCheckOut} disabled={saving}>
                 <LogOut size={16} /> Check Out
               </Button>
             </div>
+          ) : (
+            permissions.isCEOAdminOrManager && (
+              // No employee record for this login (e.g. a pure HR/admin account) —
+              // fall back to manually marking attendance for someone else.
+              <div className="flex gap-2">
+                <Button variant="success" onClick={() => openModal('checkin')}>
+                  <LogIn size={16} /> Mark Check In
+                </Button>
+                <Button variant="warning" onClick={() => openModal('checkout')}>
+                  <LogOut size={16} /> Mark Check Out
+                </Button>
+              </div>
+            )
           )
         }
       />
