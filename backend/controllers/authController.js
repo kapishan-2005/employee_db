@@ -18,17 +18,96 @@ import { hashPassword, comparePassword, validatePasswordStrength } from '../util
 import { generateToken } from '../utils/jwtUtils.js';
 
 /**
- * Register a new user
+ * Sign up a brand-new company (always allowed, no auth required)
+ * POST /api/auth/signup-company
+ *
+ * Unlike /register (which only lets an existing CEO/Admin create sub-accounts
+ * inside their own company), this endpoint always creates a fresh
+ * organization + a CEO account for it. Any number of independent companies
+ * can be created this way — each is fully isolated from every other.
+ *
+ * Body:
+ * - username (required)
+ * - email (required)
+ * - password (required)
+ */
+export const registerCompany = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        error: 'Username, email, and password are required'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ error: passwordValidation.message });
+    }
+
+    const existingUsername = await User.findByUsername(username);
+    if (existingUsername) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+
+    const existingEmail = await User.findByEmail(email);
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+
+    const password_hash = await hashPassword(password);
+
+    // Create a brand-new, isolated organization for this CEO
+    const org = await Organization.create({ name: `${username}'s Company` });
+
+    const user = await User.create({
+      username,
+      email,
+      password_hash,
+      role: 'ceo',
+      organization_id: org.id,
+      employee_id: null
+    });
+
+    const { pool } = await import('../config/db.js');
+    await pool.execute('UPDATE organizations SET created_by = ? WHERE id = ?', [user.id, org.id]);
+
+    const token = generateToken(user);
+
+    res.status(201).json({
+      message: 'Company and CEO account created successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        organization_id: user.organization_id,
+        employee_id: user.employee_id
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Register company error:', error);
+    res.status(500).json({
+      error: error.message || 'Error creating company account'
+    });
+  }
+};
+
+/**
+ * Register a new sub-account (HR/Admin, Manager, or Employee) inside the
+ * caller's existing company.
  * POST /api/auth/register
  *
- * Security model:
- * - BOOTSTRAP: if no users exist yet in the system, this is the very first
- *   account. It is created as 'ceo' regardless of what role is sent, and no
- *   auth token is required (there's nobody to log in as yet).
- * - AFTER BOOTSTRAP: registration is locked down. A valid CEO or Admin JWT
- *   token is required to create any further account (HR/Admin, Manager, or
- *   Employee). CEOs can create any role; Admins cannot create another CEO.
- *   Unauthenticated or non-CEO/Admin requests are rejected.
+ * Security model: always requires a valid CEO or Admin JWT token. CEOs can
+ * create any role (including another CEO); Admins cannot create a CEO.
+ * To create a brand-new company, use POST /api/auth/signup-company instead.
  *
  * Body:
  * - username (required)
@@ -72,38 +151,27 @@ export const register = async (req, res) => {
       });
     }
 
-    // ---- Bootstrap / access control ----
-    const userCount = await User.count();
-    let finalRole;
-    let organization_id;
+    // ---- Access control: always requires an authenticated CEO/Admin ----
+    const creator = req.user;
 
-    if (userCount === 0) {
-      // First-ever account: always CEO, no auth required.
-      finalRole = 'ceo';
-    } else {
-      // System already has users: creating an account now requires being
-      // logged in as CEO or Admin (checked via optionalAuthMiddleware).
-      const creator = req.user;
-
-      if (!creator || (creator.role !== 'ceo' && creator.role !== 'admin')) {
-        return res.status(403).json({
-          error: 'Only a CEO or Admin can create new accounts. Please sign in first.',
-        });
-      }
-
-      finalRole = role || 'employee';
-
-      // Admins cannot mint another CEO account
-      if (finalRole === 'ceo' && creator.role !== 'ceo') {
-        return res.status(403).json({
-          error: 'Only a CEO can create another CEO account',
-        });
-      }
-
-      // Every account created after bootstrap belongs to the creator's
-      // organization — this is what keeps each company's data isolated.
-      organization_id = creator.organization_id;
+    if (!creator || (creator.role !== 'ceo' && creator.role !== 'admin')) {
+      return res.status(403).json({
+        error: 'Only a CEO or Admin can create new accounts. Please sign in first.',
+      });
     }
+
+    const finalRole = role || 'employee';
+
+    // Admins cannot mint another CEO account
+    if (finalRole === 'ceo' && creator.role !== 'ceo') {
+      return res.status(403).json({
+        error: 'Only a CEO can create another CEO account',
+      });
+    }
+
+    // Every sub-account belongs to the creator's organization — this is what
+    // keeps each company's data isolated.
+    const organization_id = creator.organization_id;
 
     // Check if username already exists
     const existingUsername = await User.findByUsername(username);
@@ -124,44 +192,16 @@ export const register = async (req, res) => {
     // Hash password
     const password_hash = await hashPassword(password);
 
-    // For bootstrap (first-ever user), create their organization now that we
-    // know their user id will exist — create user first, then organization,
-    // then attach. Simpler: create the organization first with created_by
-    // filled in after.
-    let user;
+    const user = await User.create({
+      username,
+      email,
+      password_hash,
+      role: finalRole,
+      organization_id,
+      employee_id: employee_id || null
+    });
 
-    if (userCount === 0) {
-      // Create the user first (temporarily without organization_id is not
-      // possible since the column is NOT NULL) — so create the organization
-      // first, then the user, then backfill created_by on the organization.
-      const org = await Organization.create({ name: `${username}'s Company` });
-      organization_id = org.id;
-
-      user = await User.create({
-        username,
-        email,
-        password_hash,
-        role: finalRole,
-        organization_id,
-        employee_id: employee_id || null
-      });
-
-      // Backfill created_by now that we have the user id
-      const { pool } = await import('../config/db.js');
-      await pool.execute('UPDATE organizations SET created_by = ? WHERE id = ?', [user.id, org.id]);
-    } else {
-      user = await User.create({
-        username,
-        email,
-        password_hash,
-        role: finalRole,
-        organization_id,
-        employee_id: employee_id || null
-      });
-    }
-
-    // Generate JWT token (only useful for the bootstrap/self-registration case;
-    // when an admin/CEO creates another user, the caller keeps their own token)
+    // Generate JWT token (unused by the caller, but returned for consistency)
     const token = generateToken(user);
 
     // Return user info (without password) and token

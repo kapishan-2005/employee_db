@@ -24,9 +24,21 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// CORS configuration
-app.use(cors({ 
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+// CORS configuration — allow the configured production frontend URL, any
+// Vercel preview deployment for this project, and localhost for local dev.
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // same-origin / curl / server-to-server
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (/^https:\/\/employee-db.*\.vercel\.app$/.test(origin)) return callback(null, true);
+    if (/^https:\/\/employee.*-kapishans-projects\.vercel\.app$/.test(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
 }));
 

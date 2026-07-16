@@ -10,14 +10,17 @@
 
 import express from 'express';
 import * as authController from '../controllers/authController.js';
-import { authMiddleware, optionalAuthMiddleware } from '../middleware/authMiddleware.js';
+import { authMiddleware } from '../middleware/authMiddleware.js';
 import { requireCEOOrAdmin } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
-// Registration: open only for the very first (CEO) account.
-// After that, authController.register requires req.user to be ceo/admin.
-router.post('/register', optionalAuthMiddleware, authController.register);
+// Sign up a brand-new company — always public, always creates a CEO + org
+router.post('/signup-company', authController.registerCompany);
+
+// Register a sub-account inside an existing company — always requires an
+// authenticated CEO/Admin token (enforced inside the controller).
+router.post('/register', authMiddleware, authController.register);
 router.post('/login', authController.login);
 
 // Protected routes (authentication required)

@@ -79,12 +79,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Sign up (bootstrap only — works only when no users exist yet in the
-   * system; server will reject with 403 otherwise, guiding the user to log in)
+   * Sign up a new company — always creates a new organization + CEO account,
+   * regardless of how many other companies already exist in the system.
    */
   const signup = async ({ username, email, password }) => {
     try {
-      const response = await api.post(endpoints.auth.register, {
+      const response = await api.post(endpoints.auth.signupCompany, {
         username,
         email,
         password,

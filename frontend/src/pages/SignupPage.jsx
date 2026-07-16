@@ -63,8 +63,8 @@ const SignupPage = () => {
               </span>
             </h1>
             <p className="text-white/40 text-sm">
-              This creates the founding CEO account for your organization.
-              Only works once — after that, the CEO invites everyone else.
+              This creates a brand-new company with you as CEO. Each company's
+              data is completely separate and secure from every other company.
             </p>
           </div>
 

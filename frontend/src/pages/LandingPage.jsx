@@ -82,7 +82,7 @@ const LandingPage = () => {
         </p>
         <div className="flex items-center justify-center gap-4">
           <Link
-            to="/login"
+            to="/signup"
             className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-400 hover:to-violet-400 text-white font-semibold rounded-lg shadow-lg shadow-indigo-500/20 transition-colors"
           >
             Get Started

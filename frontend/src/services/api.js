@@ -135,6 +135,7 @@ export const endpoints = {
   auth: {
     login: '/auth/login',
     register: '/auth/register',
+    signupCompany: '/auth/signup-company',
     me: '/auth/me',
   },
   
