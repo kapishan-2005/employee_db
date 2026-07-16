@@ -24,13 +24,12 @@ const MainLayout = ({ children }) => {
   };
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     ...(currentUser?.role === 'ceo'
       ? [
           { path: '/ceo/dashboard', label: 'Company', icon: Landmark },
           { path: '/ceo/users', label: 'Users', icon: ShieldCheck },
         ]
-      : []),
+      : [{ path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }]),
     { path: '/employees', label: 'Employees', icon: Users },
     { path: '/departments', label: 'Departments', icon: Building2 },
     { path: '/attendance', label: 'Attendance', icon: ClipboardList },
