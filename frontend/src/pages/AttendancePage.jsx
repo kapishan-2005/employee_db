@@ -314,8 +314,8 @@ const AttendancePage = () => {
         />
       </div>
 
-      <div className="rounded-2xl border border-white/8 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-white/8 overflow-x-auto">
+        <table className="w-full text-sm min-w-[720px]">
           <thead>
             <tr className="bg-white/[0.04] border-b border-white/8">
               {['#', 'Employee', 'Date', 'Check In', 'Check Out', 'Status', 'Notes'].map((h) => (

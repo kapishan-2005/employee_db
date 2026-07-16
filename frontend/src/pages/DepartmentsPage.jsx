@@ -146,8 +146,8 @@ const DepartmentsPage = () => {
         placeholder="Search departments..."
       />
 
-      <div className="rounded-2xl border border-white/8 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="rounded-2xl border border-white/8 overflow-x-auto">
+        <table className="w-full text-sm min-w-[600px]">
           <thead>
             <tr className="bg-white/[0.04] border-b border-white/8">
               {['#', 'Name', 'Description', 'Status', 'Actions'].map((h) => (
@@ -184,7 +184,7 @@ const DepartmentsPage = () => {
                     </span>
                   </td>
                   <td className="px-5 py-4">
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                       {permissions.canEditDepartment && (
                         <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'edit', dept })}>
                           Edit

@@ -11,7 +11,7 @@ const PageHeader = ({ title, subtitle, action }) => {
             {subtitle}
           </p>
         )}
-        <h1 className="text-4xl font-bold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
           {title.split(' ').map((word, i) =>
             i === title.split(' ').length - 1 ? (
               <span

@@ -217,8 +217,8 @@ export default function EmployeesPage() {
           placeholder="Search by name, position, or employee ID…"
           />
 
-        <div className="rounded-2xl border border-white/8 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-2xl border border-white/8 overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-white/[0.04] border-b border-white/8">
                 {['#', 'Name', 'Position', 'Employee ID', 'Actions'].map((h) => (
@@ -253,7 +253,7 @@ export default function EmployeesPage() {
                     </td>
                     <td className="px-5 py-4 font-mono text-white/60 text-xs">{emp.roll_no}</td>
                     <td className="px-5 py-4">
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                         {permissions.canAnalyzePerformance && (
                           <Button variant="ghost" size="sm" onClick={() => openModal({ type: 'performance', emp })}>
                             <Sparkles size={14} /> AI Score
