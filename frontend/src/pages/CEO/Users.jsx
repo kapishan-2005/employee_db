@@ -10,14 +10,14 @@ import Button from '../../components/common/Button';
 
 const roleBadge = {
   ceo: 'bg-violet-500/15 text-violet-300 border-violet-500/20',
-  admin: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
+  hr: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/20',
   manager: 'bg-sky-500/15 text-sky-300 border-sky-500/20',
   employee: 'bg-white/10 text-white/60 border-white/10',
 };
 
 // Roles that represent people who work at the company (as opposed to a
 // pure system-admin login) and should have an Employee Directory profile.
-const NEEDS_EMPLOYEE_PROFILE = ['employee', 'manager', 'admin'];
+const NEEDS_EMPLOYEE_PROFILE = ['employee', 'manager', 'hr'];
 
 const CEOUsers = () => {
   const fetchUsers = useCallback(async () => await userService.list(), []);
@@ -70,24 +70,26 @@ const CEOUsers = () => {
     setError(null);
     setSuccess(null);
     try {
-      let employee_id = null;
+      // Prepare user creation payload
+      const payload = {
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        role: form.role,
+        mode: mode, // 'new' or 'existing'
+      };
 
+      // If existing mode, include the selected employee_id
       if (mode === 'existing') {
         if (!form.employee_id) {
           throw new Error('Please select an employee to link this login to');
         }
-        employee_id = parseInt(form.employee_id);
-      } else if (needsProfile) {
-        // Create a brand-new HR profile (Employees table) linked to this login
-        const employeeResponse = await api.post(endpoints.employees.create, {
-          name: form.username,
-          course: form.role === 'manager' ? 'Manager' : form.role === 'admin' ? 'HR / Admin' : 'Employee',
-          roll_no: `EMP-${Date.now().toString().slice(-6)}`,
-        });
-        employee_id = employeeResponse?.data?.id;
+        payload.employee_id = parseInt(form.employee_id);
       }
 
-      await userService.create({ ...form, employee_id });
+      // Backend handles employee profile creation in transaction
+      await userService.create(payload);
+      
       setSuccess(`${form.username} created as ${form.role}`);
       setForm({ username: '', email: '', password: '', role: 'employee', employee_id: '' });
       await Promise.all([refetchUsers(), refetchEmployees()]);
@@ -206,7 +208,7 @@ const CEOUsers = () => {
               options={[
                 { value: 'employee', label: 'Employee' },
                 { value: 'manager', label: 'Manager' },
-                { value: 'admin', label: 'Admin / HR' },
+                { value: 'hr', label: 'HR' },
               ]}
               required
             />
@@ -214,7 +216,7 @@ const CEOUsers = () => {
 
           {mode === 'new' && needsProfile && (
             <div className="p-3 rounded-lg border border-indigo-500/15 bg-indigo-500/5 text-xs text-indigo-200">
-              A new Employee Directory profile will be created automatically for this login.
+              An Employee Directory profile will be automatically created and linked to this login account.
             </div>
           )}
 

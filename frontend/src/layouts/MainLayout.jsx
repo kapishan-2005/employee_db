@@ -5,12 +5,14 @@ import {
   Users,
   Building2,
   ClipboardList,
+  CalendarDays,
   Target,
   ShieldCheck,
   Landmark,
   LogOut,
   Menu,
   X,
+  Settings,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Footer from '../components/common/Footer';
@@ -37,8 +39,12 @@ const MainLayout = ({ children }) => {
     { path: '/employees', label: 'Employees', icon: Users },
     { path: '/departments', label: 'Departments', icon: Building2 },
     { path: '/attendance', label: 'Attendance', icon: ClipboardList },
-    ...(currentUser?.role === 'ceo' || currentUser?.role === 'admin'
+    { path: '/leave', label: 'Leave', icon: CalendarDays },
+    ...(currentUser?.role === 'ceo' || currentUser?.role === 'hr'
       ? [{ path: '/recruitment', label: 'Recruitment', icon: Target }]
+      : []),
+    ...(currentUser?.role === 'ceo' || currentUser?.role === 'hr'
+      ? [{ path: '/settings/company', label: 'Settings', icon: Settings }]
       : []),
   ];
 

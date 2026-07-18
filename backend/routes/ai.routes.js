@@ -1,7 +1,7 @@
 import express from 'express';
 import * as controller from '../controllers/ai.controller.js';
 import authMiddleware from '../middleware/authMiddleware.js';
-import { requireCEOAdminOrManager, requireCEOOrAdmin } from '../middleware/roleMiddleware.js';
+import { requireRole } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
@@ -16,26 +16,26 @@ router.get('/chat/history', authMiddleware, controller.getChatHistory);
 // Stored insights for the current user
 router.get('/insights', authMiddleware, controller.getInsights);
 
-// Generate fresh company-wide insights (CEO / Admin only)
-router.post('/insights/generate', authMiddleware, requireCEOOrAdmin, controller.generateInsights);
+// Generate fresh company-wide insights (CEO / HR only)
+router.post('/insights/generate', authMiddleware, requireRole('ceo', 'hr'), controller.generateInsights);
 
-// Employee performance analysis (CEO / Admin / Manager only)
+// Employee performance analysis (CEO / HR / Manager only)
 router.post(
   '/performance/:employeeId',
   authMiddleware,
-  requireCEOAdminOrManager,
+  requireRole('ceo', 'hr', 'manager'),
   controller.analyzePerformance
 );
 
-// Attendance intelligence — pattern detection (CEO / Admin / Manager only)
+// Attendance intelligence — pattern detection (CEO / HR / Manager only)
 router.get(
   '/attendance-intelligence',
   authMiddleware,
-  requireCEOAdminOrManager,
+  requireRole('ceo', 'hr', 'manager'),
   controller.attendanceIntelligence
 );
 
-// AI recruitment assistant (CEO / Admin only)
-router.post('/recruitment', authMiddleware, requireCEOOrAdmin, controller.generateRecruitment);
+// AI recruitment assistant (CEO / HR only)
+router.post('/recruitment', authMiddleware, requireRole('ceo', 'hr'), controller.generateRecruitment);
 
 export default router;

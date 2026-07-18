@@ -7,7 +7,10 @@ import authRoutes from "./routes/authRoutes.js";
 import departmentRoutes from "./routes/departmentRoutes.js";
 import attendanceRoutes from "./routes/attendanceRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import ceoDashboardRoutes from "./routes/ceoDashboardRoutes.js";
 import aiRoutes from "./routes/ai.routes.js";
+import organizationRoutes from "./routes/organizationRoutes.js";
+import leaveRoutes from "./routes/leaveRoutes.js";
 import { pool } from "./config/db.js";
 import errorHandler from "./middleware/errorHandler.js";
 import requestLogger from "./middleware/requestLogger.js";
@@ -69,8 +72,17 @@ app.use("/api/attendance", attendanceRoutes);
 // Dashboard routes
 app.use("/api/dashboard", dashboardRoutes);
 
+// CEO Dashboard routes
+app.use("/api/ceo/dashboard", ceoDashboardRoutes);
+
 // AI Workforce Intelligence routes
 app.use("/api/ai", aiRoutes);
+
+// Organization/Company settings routes
+app.use("/api/organization", organizationRoutes);
+
+// Leave management routes
+app.use("/api/leave", leaveRoutes);
 
 // 404 handler
 app.use((req, res) => {

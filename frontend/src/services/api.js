@@ -134,7 +134,6 @@ export const endpoints = {
   // Auth
   auth: {
     login: '/auth/login',
-    register: '/auth/register',
     signupCompany: '/auth/signup-company',
     me: '/auth/me',
   },
@@ -155,8 +154,17 @@ export const endpoints = {
     create: '/departments',
     update: (id) => `/departments/${id}`,
     delete: (id) => `/departments/${id}`,
+    assignManager: (id) => `/departments/${id}/manager`,
+    toggleStatus: (id) => `/departments/${id}/status`,
     employees: (id) => `/departments/${id}/employees`,
     stats: (id) => `/departments/${id}/stats`,
+  },
+  
+  // Organization/Company
+  organization: {
+    settings: '/organization/settings',
+    completeSetup: '/organization/complete-setup',
+    setupStatus: '/organization/setup-status',
   },
   
   // Attendance
@@ -173,7 +181,7 @@ export const endpoints = {
   // Users (CEO/Admin)
   users: {
     list: '/auth/users',
-    register: '/auth/register',
+    create: '/auth/users',
   },
 
   // AI

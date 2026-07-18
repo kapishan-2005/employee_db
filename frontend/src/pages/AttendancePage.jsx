@@ -317,7 +317,7 @@ const AttendancePage = () => {
               </Button>
             </div>
           ) : (
-            permissions.isCEOAdminOrManager && (
+            permissions.isCEOHROrManager && (
               // No employee record for this login (e.g. a pure HR/admin account) —
               // fall back to manually marking attendance for someone else.
               <div className="flex gap-2">
@@ -337,7 +337,7 @@ const AttendancePage = () => {
         <p className="text-xs text-white/40 mb-6">Viewing your own attendance records</p>
       )}
 
-      {permissions.isCEOAdminOrManager && <AttendanceIntelligence />}
+      {permissions.isCEOHROrManager && <AttendanceIntelligence />}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Records" value={stats.total} />

@@ -23,10 +23,11 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d'; // 7 days default
  * @param {number} user.id - User ID
  * @param {string} user.username - Username
  * @param {string} user.role - User role (admin, manager, employee)
+ * @param {string} expiresIn - Token expiration (default: 7d)
  * @returns {string} JWT token
  * @throws {Error} If token generation fails
  */
-export const generateToken = (user) => {
+export const generateToken = (user, expiresIn = null) => {
   try {
     if (!user || !user.id) {
       throw new Error('User object with id is required');
@@ -38,12 +39,13 @@ export const generateToken = (user) => {
       username: user.username,
       role: user.role || 'employee',
       email: user.email,
-      organization_id: user.organization_id
+      organization_id: user.organization_id,
+      employee_id: user.employee_id
     };
 
     // Sign and return token
     const token = jwt.sign(payload, JWT_SECRET, {
-      expiresIn: JWT_EXPIRE
+      expiresIn: expiresIn || JWT_EXPIRE
     });
 
     return token;

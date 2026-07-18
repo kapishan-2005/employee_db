@@ -1,4 +1,6 @@
 import Employee from "../models/employeeModel.js";
+import User from "../models/userModel.js";
+import { pool } from "../config/db.js";
 
 // Validation helper
 const validateEmail = (email) => {
@@ -18,10 +20,18 @@ const validatePhone = (phone) => {
   return phoneRegex.test(phone) && phone.length >= 7 && phone.length <= 20;
 };
 
-// GET ALL with pagination, search, and filters
+/**
+ * GET ALL EMPLOYEES
+ * 
+ * Role-based filtering:
+ * - CEO/HR: View all employees in organization
+ * - Manager: View employees in their assigned department only
+ * - Employee: View only themselves
+ */
 export const getAllEmployees = async (req, res) => {
   try {
     const { page, limit, search, status, department_id } = req.query;
+    const { role, id: userId, organization_id } = req.user;
     
     // Validate query parameters
     if (status && !validateStatus(status)) {
@@ -38,14 +48,87 @@ export const getAllEmployees = async (req, res) => {
       });
     }
     
-    const result = await Employee.find({
+    // Build query options
+    const options = {
       page: page || 1,
       limit: limit || 10,
       search: search || '',
       status: status || '',
       department_id: department_id || '',
-      organization_id: req.user.organization_id
-    });
+      organization_id
+    };
+    
+    // Role-based filtering
+    if (role === 'manager') {
+      // Manager: only employees in their department
+      // First, find which department(s) they manage
+      const [deptRows] = await pool.execute(
+        'SELECT id FROM departments WHERE manager_id = ? AND organization_id = ?',
+        [userId, organization_id]
+      );
+      
+      if (deptRows.length === 0) {
+        // Manager not assigned to any department, return empty
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page: parseInt(options.page),
+            limit: parseInt(options.limit),
+            total: 0,
+            totalPages: 0
+          }
+        });
+      }
+      
+      // Override department_id filter with manager's department
+      options.department_id = deptRows[0].id;
+    } else if (role === 'employee') {
+      // Employee: only view themselves
+      // Find their employee record
+      const user = await User.findById(userId);
+      if (!user || !user.employee_id) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page: parseInt(options.page),
+            limit: parseInt(options.limit),
+            total: 0,
+            totalPages: 0
+          }
+        });
+      }
+      
+      // Return only their own record
+      const employee = await Employee.findById(user.employee_id, organization_id);
+      if (!employee) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: {
+            page: 1,
+            limit: 1,
+            total: 0,
+            totalPages: 0
+          }
+        });
+      }
+      
+      return res.json({
+        success: true,
+        data: [employee],
+        pagination: {
+          page: 1,
+          limit: 1,
+          total: 1,
+          totalPages: 1
+        }
+      });
+    }
+    // CEO and HR see all employees
+    
+    const result = await Employee.find(options);
     
     res.json({
       success: true,
@@ -60,10 +143,18 @@ export const getAllEmployees = async (req, res) => {
   }
 };
 
-// GET BY ID
+/**
+ * GET EMPLOYEE BY ID
+ * 
+ * Role-based access:
+ * - CEO/HR: View any employee in organization
+ * - Manager: View employees in their department only
+ * - Employee: View only themselves
+ */
 export const getEmployeeById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, id: userId, organization_id } = req.user;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -72,7 +163,7 @@ export const getEmployeeById = async (req, res) => {
       });
     }
 
-    const employee = await Employee.findById(id, req.user.organization_id);
+    const employee = await Employee.findById(id, organization_id);
 
     if (!employee) {
       return res.status(404).json({
@@ -80,6 +171,32 @@ export const getEmployeeById = async (req, res) => {
         error: "Employee not found"
       });
     }
+
+    // Role-based access control
+    if (role === 'manager') {
+      // Manager can only view employees in their department
+      const [deptRows] = await pool.execute(
+        'SELECT id FROM departments WHERE manager_id = ? AND organization_id = ?',
+        [userId, organization_id]
+      );
+      
+      if (deptRows.length === 0 || !deptRows.some(d => d.id === employee.department_id)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view employees in your department."
+        });
+      }
+    } else if (role === 'employee') {
+      // Employee can only view themselves
+      const user = await User.findById(userId);
+      if (!user || user.employee_id !== parseInt(id)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view your own profile."
+        });
+      }
+    }
+    // CEO and HR can view any employee
 
     res.json({
       success: true,

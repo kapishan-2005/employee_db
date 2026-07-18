@@ -35,7 +35,7 @@ export const departmentService = {
 
   /**
    * Create new department
-   * @param {Object} data - Department data (name, description, is_active)
+   * @param {Object} data - Department data (name, description, is_active, manager_id)
    * @returns {Promise<Object>} Created department
    */
   createDepartment: async (data) => {
@@ -50,6 +50,26 @@ export const departmentService = {
    */
   updateDepartment: async (id, data) => {
     return await api.put(endpoints.departments.update(id), data);
+  },
+
+  /**
+   * Assign or remove manager from department
+   * @param {number} id - Department ID
+   * @param {number|null} managerId - Manager user ID (null to remove)
+   * @returns {Promise<Object>} Updated department
+   */
+  assignManager: async (id, managerId) => {
+    return await api.patch(endpoints.departments.assignManager(id), { manager_id: managerId });
+  },
+
+  /**
+   * Toggle department active status
+   * @param {number} id - Department ID
+   * @param {boolean} isActive - Active status
+   * @returns {Promise<Object>} Updated department
+   */
+  toggleStatus: async (id, isActive) => {
+    return await api.patch(endpoints.departments.toggleStatus(id), { is_active: isActive });
   },
 
   /**

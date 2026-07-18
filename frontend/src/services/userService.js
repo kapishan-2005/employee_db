@@ -10,14 +10,8 @@ export const userService = {
     return await api.get(endpoints.users.list);
   },
 
-  create: async ({ username, email, password, role, employee_id }) => {
-    return await api.post(endpoints.users.register, {
-      username,
-      email,
-      password,
-      role,
-      employee_id,
-    });
+  create: async (data) => {
+    return await api.post(endpoints.users.create, data);
   },
 };
 

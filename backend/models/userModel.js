@@ -109,11 +109,24 @@ const User = {
   findByEmailWithPassword: async (email) => {
     try {
       const [rows] = await pool.execute(
-        'SELECT * FROM users WHERE email = ?',
+        'SELECT * FROM users WHERE LOWER(email) = LOWER(?)',
         [email]
       );
+      
+      if (rows[0]) {
+        console.log('📧 User query result:', {
+          id: rows[0].id,
+          email: rows[0].email,
+          role: rows[0].role,
+          status: rows[0].status,
+          is_active: rows[0].is_active,
+          hasPasswordHash: !!rows[0].password_hash
+        });
+      }
+      
       return rows[0] || null;
     } catch (error) {
+      console.error('Error in findByEmailWithPassword:', error);
       throw new Error(`Error fetching user by email: ${error.message}`);
     }
   },
@@ -133,17 +146,29 @@ const User = {
 
   /**
    * Create new user
-   * NOTE: In Phase 2, password will be hashed before calling this method
+   * NOTE: Password will be hashed before calling this method
    * @param {Object} data - User data
    * @returns {Promise<Object>} Created user object (without password_hash)
    */
   create: async (data) => {
     try {
-      const { username, email, password_hash, role = 'employee', organization_id, employee_id = null } = data;
+      const { 
+        username, 
+        email, 
+        password_hash, 
+        role = 'employee', 
+        organization_id, 
+        employee_id = null,
+        invited_by = null,
+        invitation_accepted_at = null,
+        status = 'active'
+      } = data;
 
       const [result] = await pool.execute(
-        'INSERT INTO users (username, email, password_hash, role, organization_id, employee_id) VALUES (?, ?, ?, ?, ?, ?)',
-        [username, email, password_hash, role, organization_id, employee_id]
+        `INSERT INTO users 
+        (username, email, password_hash, role, organization_id, employee_id, invited_by, invitation_accepted_at, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [username, email, password_hash, role, organization_id, employee_id, invited_by, invitation_accepted_at, status]
       );
 
       return {
@@ -153,7 +178,9 @@ const User = {
         role,
         organization_id,
         employee_id,
-        is_active: true
+        invited_by,
+        invitation_accepted_at,
+        status
       };
     } catch (error) {
       // Handle duplicate username/email
@@ -275,6 +302,147 @@ const User = {
       );
     } catch (error) {
       throw new Error(`Error updating last login: ${error.message}`);
+    }
+  },
+
+  /**
+   * Get user by ID with password hash (for password verification)
+   * @param {number} id - User ID
+   * @returns {Promise<Object|null>} User object with password_hash
+   */
+  findByIdWithPassword: async (id) => {
+    try {
+      const [rows] = await pool.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [id]
+      );
+      return rows[0] || null;
+    } catch (error) {
+      throw new Error(`Error fetching user by ID: ${error.message}`);
+    }
+  },
+
+  /**
+   * Update user password
+   * @param {number} userId - User ID
+   * @param {string} passwordHash - New password hash
+   * @returns {Promise<void>}
+   */
+  updatePassword: async (userId, passwordHash) => {
+    try {
+      const [result] = await pool.execute(
+        'UPDATE users SET password_hash = ? WHERE id = ?',
+        [passwordHash, userId]
+      );
+
+      if (result.affectedRows === 0) {
+        throw new Error('User not found');
+      }
+    } catch (error) {
+      throw new Error(`Error updating password: ${error.message}`);
+    }
+  },
+
+  /**
+   * Create password reset token
+   * @param {number} userId - User ID
+   * @returns {Promise<string>} Reset token
+   */
+  createPasswordResetToken: async (userId) => {
+    try {
+      // Generate random token
+      const crypto = await import('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      
+      // Token expires in 1 hour
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await pool.execute(
+        'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+        [userId, token, expiresAt]
+      );
+
+      return token;
+    } catch (error) {
+      throw new Error(`Error creating reset token: ${error.message}`);
+    }
+  },
+
+  /**
+   * Verify password reset token
+   * @param {string} token - Reset token
+   * @returns {Promise<number|null>} User ID if valid, null if invalid/expired
+   */
+  verifyPasswordResetToken: async (token) => {
+    try {
+      const [rows] = await pool.execute(
+        `SELECT user_id FROM password_reset_tokens 
+         WHERE token = ? AND expires_at > NOW() AND used_at IS NULL`,
+        [token]
+      );
+
+      return rows[0] ? rows[0].user_id : null;
+    } catch (error) {
+      throw new Error(`Error verifying reset token: ${error.message}`);
+    }
+  },
+
+  /**
+   * Invalidate password reset token
+   * @param {string} token - Reset token
+   * @returns {Promise<void>}
+   */
+  invalidatePasswordResetToken: async (token) => {
+    try {
+      await pool.execute(
+        'UPDATE password_reset_tokens SET used_at = NOW() WHERE token = ?',
+        [token]
+      );
+    } catch (error) {
+      throw new Error(`Error invalidating reset token: ${error.message}`);
+    }
+  },
+
+  /**
+   * Record login attempt in history
+   * @param {number} userId - User ID
+   * @param {string} ipAddress - IP address
+   * @param {string} userAgent - User agent string
+   * @param {boolean} success - Whether login was successful
+   * @returns {Promise<void>}
+   */
+  recordLogin: async (userId, ipAddress, userAgent, success = true) => {
+    try {
+      await pool.execute(
+        'INSERT INTO login_history (user_id, ip_address, user_agent, success) VALUES (?, ?, ?, ?)',
+        [userId, ipAddress, userAgent, success]
+      );
+    } catch (error) {
+      // Don't throw error - login history is non-critical
+      console.error('Error recording login history:', error);
+    }
+  },
+
+  /**
+   * Get login history for a user
+   * @param {number} userId - User ID
+   * @param {number} limit - Number of records to return
+   * @returns {Promise<Array>} Array of login history records
+   */
+  getLoginHistory: async (userId, limit = 10) => {
+    try {
+      const safeLimit = Math.max(1, parseInt(limit) || 10);
+      const [rows] = await pool.execute(
+        `SELECT id, ip_address, user_agent, login_at, success 
+         FROM login_history 
+         WHERE user_id = ? 
+         ORDER BY login_at DESC 
+         LIMIT ${safeLimit}`,
+        [userId]
+      );
+      return rows;
+    } catch (error) {
+      throw new Error(`Error fetching login history: ${error.message}`);
     }
   }
 };

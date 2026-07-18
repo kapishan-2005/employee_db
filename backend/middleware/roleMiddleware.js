@@ -54,34 +54,46 @@ export const requireRole = (...allowedRoles) => {
 };
 
 /**
- * Require admin role
- * Shorthand for requireRole('admin')
- */
-export const requireAdmin = requireRole('admin');
-
-/**
  * Require CEO role only
  * Shorthand for requireRole('ceo')
  */
 export const requireCEO = requireRole('ceo');
 
 /**
- * Require CEO or admin role
- * Shorthand for requireRole('ceo', 'admin')
+ * Require HR role only
+ * Shorthand for requireRole('hr')
  */
-export const requireCEOOrAdmin = requireRole('ceo', 'admin');
+export const requireHR = requireRole('hr');
 
 /**
- * Require admin or manager role
- * Shorthand for requireRole('admin', 'manager')
+ * Require Manager role only
+ * Shorthand for requireRole('manager')
  */
-export const requireAdminOrManager = requireRole('admin', 'manager');
+export const requireManager = requireRole('manager');
 
 /**
- * Require CEO, admin, or manager role
- * Shorthand for requireRole('ceo', 'admin', 'manager')
+ * Require Employee role only
+ * Shorthand for requireRole('employee')
  */
-export const requireCEOAdminOrManager = requireRole('ceo', 'admin', 'manager');
+export const requireEmployee = requireRole('employee');
+
+/**
+ * Require CEO or HR role
+ * Shorthand for requireRole('ceo', 'hr')
+ */
+export const requireCEOOrHR = requireRole('ceo', 'hr');
+
+/**
+ * Require HR or Manager role
+ * Shorthand for requireRole('hr', 'manager')
+ */
+export const requireHROrManager = requireRole('hr', 'manager');
+
+/**
+ * Require CEO, HR, or Manager role
+ * Shorthand for requireRole('ceo', 'hr', 'manager')
+ */
+export const requireManagementRoles = requireRole('ceo', 'hr', 'manager');
 
 /**
  * Check if user is accessing their own resource
@@ -106,8 +118,8 @@ export const requireSelfOrAdmin = (paramName = 'id') => {
       const resourceId = parseInt(req.params[paramName]);
       const userId = req.user.id;
 
-      // Allow if user is ceo/admin or accessing their own resource
-      if (req.user.role === 'ceo' || req.user.role === 'admin' || userId === resourceId) {
+      // Allow if user is ceo/hr or accessing their own resource
+      if (req.user.role === 'ceo' || req.user.role === 'hr' || userId === resourceId) {
         return next();
       }
 
@@ -144,7 +156,7 @@ export const requireOwnEmployeeOrAdmin = (req, res, next) => {
     // Allow if user is ceo/admin/manager or accessing their own employee record
     if (
       req.user.role === 'ceo' ||
-      req.user.role === 'admin' || 
+      req.user.role === 'hr' || 
       req.user.role === 'manager' || 
       userEmployeeId === employeeId
     ) {

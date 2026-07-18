@@ -44,14 +44,23 @@ export const hashPassword = async (password) => {
  */
 export const comparePassword = async (password, hash) => {
   try {
+    console.log('🔐 comparePassword called:', {
+      passwordLength: password?.length,
+      hashLength: hash?.length,
+      hashPrefix: hash?.substring(0, 7)
+    });
+    
     if (!password || !hash) {
+      console.log('❌ Missing password or hash');
       return false;
     }
 
     // Compare password with hash
     const isMatch = await bcrypt.compare(password, hash);
+    console.log('🔑 bcrypt.compare result:', isMatch);
     return isMatch;
   } catch (error) {
+    console.error('❌ Error in comparePassword:', error);
     throw new Error(`Error comparing password: ${error.message}`);
   }
 };

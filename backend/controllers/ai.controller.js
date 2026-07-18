@@ -31,7 +31,7 @@ export const chat = async (req, res) => {
 
     // Build light context depending on role so answers are grounded in real data
     let contextText = '';
-    if (role === 'ceo' || role === 'admin') {
+    if (role === 'ceo' || role === 'hr') {
       const context = await AI.getCompanyContext(organization_id);
       contextText = `Company context: ${JSON.stringify(context)}`;
     } else if (employee_id) {
@@ -227,7 +227,7 @@ export const generateRecruitment = async (req, res) => {
       return errorResponse(res, 'jobRole is required', 400);
     }
 
-    const persona = getPersonaForRole('admin');
+    const persona = getPersonaForRole('hr');
     const prompt = `Create a recruitment package for this role:
 Job Role: ${jobRole}
 Experience level: ${experience || 'not specified'}

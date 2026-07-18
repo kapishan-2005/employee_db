@@ -7,7 +7,8 @@ const SignupPage = () => {
   const { signup } = useAuth();
 
   const [formData, setFormData] = useState({
-    username: '',
+    companyName: '',
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -33,11 +34,13 @@ const SignupPage = () => {
     setLoading(true);
     try {
       await signup({
-        username: formData.username,
+        companyName: formData.companyName,
+        fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
       });
-      navigate('/dashboard', { replace: true });
+      // After signup, CEO should go to setup wizard
+      navigate('/setup', { replace: true });
     } catch (err) {
       setError(err.message || 'Sign up failed. Please try again.');
     } finally {
@@ -51,6 +54,12 @@ const SignupPage = () => {
       <div className="pointer-events-none fixed bottom-0 right-1/4 w-96 h-96 bg-violet-600/10 rounded-full blur-3xl" />
 
       <div className="relative w-full max-w-md">
+        <Link
+          to="/"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm mb-4"
+        >
+          <span className="text-base leading-none">←</span> Back to Home
+        </Link>
         <div className="bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <p className="text-xs uppercase tracking-widest text-indigo-300/70 mb-2">
@@ -82,15 +91,15 @@ const SignupPage = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 tracking-widest uppercase">
-                Username
+                Company Name
               </label>
               <input
                 type="text"
-                name="username"
-                value={formData.username}
+                name="companyName"
+                value={formData.companyName}
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 transition"
-                placeholder="Choose a username"
+                placeholder="Acme Corporation"
                 required
                 disabled={loading}
               />
@@ -98,7 +107,23 @@ const SignupPage = () => {
 
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 tracking-widest uppercase">
-                Email (Gmail or any real email)
+                Full Name
+              </label>
+              <input
+                type="text"
+                name="fullName"
+                value={formData.fullName}
+                onChange={handleChange}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 transition"
+                placeholder="John Smith"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5 tracking-widest uppercase">
+                Email
               </label>
               <input
                 type="email"
@@ -106,7 +131,7 @@ const SignupPage = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 transition"
-                placeholder="you@gmail.com"
+                placeholder="john@acmecorp.com"
                 required
                 disabled={loading}
               />

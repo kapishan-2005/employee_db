@@ -50,7 +50,8 @@ export const authMiddleware = async (req, res, next) => {
       username: decoded.username,
       role: decoded.role,
       email: decoded.email,
-      organization_id: decoded.organization_id
+      organization_id: decoded.organization_id,
+      employee_id: decoded.employee_id
     };
 
     // Continue to next middleware/route handler
@@ -104,7 +105,8 @@ export const optionalAuthMiddleware = async (req, res, next) => {
       username: decoded.username,
       role: decoded.role,
       email: decoded.email,
-      organization_id: decoded.organization_id
+      organization_id: decoded.organization_id,
+      employee_id: decoded.employee_id
     };
 
     next();

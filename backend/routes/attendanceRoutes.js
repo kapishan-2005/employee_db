@@ -5,8 +5,8 @@ import { requireRole } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// GET attendance report - ceo, admin and manager only
-router.get("/report", authMiddleware, requireRole('ceo', 'admin', 'manager'), controller.getAttendanceReport);
+// GET attendance report - ceo, hr and manager only
+router.get("/report", authMiddleware, requireRole('ceo', 'hr', 'manager'), controller.getAttendanceReport);
 
 // POST check-in/check-out - all authenticated users
 router.post("/check-in", authMiddleware, controller.checkIn);
@@ -21,7 +21,7 @@ router.get("/", authMiddleware, controller.getAllAttendance);
 // GET attendance by ID - all authenticated users
 router.get("/:id", authMiddleware, controller.getAttendanceById);
 
-// PUT update attendance - ceo, admin and manager only
-router.put("/:id", authMiddleware, requireRole('ceo', 'admin', 'manager'), controller.updateAttendance);
+// PUT update attendance - ceo, hr and manager only
+router.put("/:id", authMiddleware, requireRole('ceo', 'hr', 'manager'), controller.updateAttendance);
 
 export default router;

@@ -44,13 +44,14 @@ export const AuthProvider = ({ children }) => {
   /**
    * Login user
    */
-  const login = async (username, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
-      console.log('[AuthContext] Login attempt:', { username });
+      console.log('[AuthContext] Login attempt:', { email });
       
       const response = await api.post(endpoints.auth.login, {
-        username,
+        email,
         password,
+        rememberMe,
       });
 
       console.log('[AuthContext] Login response:', response);
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
         setToken(response.token);
         setCurrentUser(response.user);
 
-        return { success: true, user: response.user };
+        return { success: true, user: response.user, redirectTo: response.redirectTo };
       } else {
         throw new Error(response.error || 'Login failed');
       }
@@ -82,10 +83,11 @@ export const AuthProvider = ({ children }) => {
    * Sign up a new company — always creates a new organization + CEO account,
    * regardless of how many other companies already exist in the system.
    */
-  const signup = async ({ username, email, password }) => {
+  const signup = async ({ companyName, fullName, email, password }) => {
     try {
       const response = await api.post(endpoints.auth.signupCompany, {
-        username,
+        companyName,
+        fullName,
         email,
         password,
       });

@@ -1,4 +1,5 @@
 import Department from "../models/departmentModel.js";
+import User from "../models/userModel.js";
 
 // Validation helper
 const validateDepartmentName = (name) => {
@@ -8,17 +9,46 @@ const validateDepartmentName = (name) => {
   return name.trim().length > 0 && name.trim().length <= 100;
 };
 
-// GET ALL DEPARTMENTS
+/**
+ * GET ALL DEPARTMENTS
+ * 
+ * Role-based filtering:
+ * - CEO/HR: View all departments
+ * - Manager: View their assigned department only
+ * - Employee: View their own department only
+ */
 export const getAllDepartments = async (req, res) => {
   try {
     const { is_active } = req.query;
+    const { role, id: userId, organization_id } = req.user;
     
-    const options = { organization_id: req.user.organization_id };
+    const options = { organization_id };
     if (is_active !== undefined) {
       options.isActive = is_active === 'true' || is_active === '1';
     }
     
-    const departments = await Department.findAll(options);
+    let departments = await Department.findAll(options);
+    
+    // Filter based on role
+    if (role === 'manager') {
+      // Manager can only see their assigned department
+      departments = departments.filter(dept => dept.manager_id === userId);
+    } else if (role === 'employee') {
+      // Employee can only see their own department
+      const user = await User.findById(userId);
+      if (user && user.employee_id) {
+        const Employee = await import('../models/employeeModel.js');
+        const employee = await Employee.default.findById(user.employee_id, organization_id);
+        if (employee && employee.department_id) {
+          departments = departments.filter(dept => dept.id === employee.department_id);
+        } else {
+          departments = [];
+        }
+      } else {
+        departments = [];
+      }
+    }
+    // CEO and HR see all departments (no filtering)
     
     res.json({
       success: true,
@@ -33,10 +63,18 @@ export const getAllDepartments = async (req, res) => {
   }
 };
 
-// GET DEPARTMENT BY ID
+/**
+ * GET DEPARTMENT BY ID
+ * 
+ * Role-based access:
+ * - CEO/HR: View any department
+ * - Manager: View their assigned department only
+ * - Employee: View their own department only
+ */
 export const getDepartmentById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { role, id: userId, organization_id } = req.user;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -45,7 +83,7 @@ export const getDepartmentById = async (req, res) => {
       });
     }
 
-    const department = await Department.findById(id, req.user.organization_id);
+    const department = await Department.findById(id, organization_id);
 
     if (!department) {
       return res.status(404).json({
@@ -53,6 +91,37 @@ export const getDepartmentById = async (req, res) => {
         error: "Department not found"
       });
     }
+
+    // Check access permissions
+    if (role === 'manager') {
+      // Manager can only view their assigned department
+      if (department.manager_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view your assigned department."
+        });
+      }
+    } else if (role === 'employee') {
+      // Employee can only view their own department
+      const user = await User.findById(userId);
+      if (!user || !user.employee_id) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. Employee record not found."
+        });
+      }
+      
+      const Employee = await import('../models/employeeModel.js');
+      const employee = await Employee.default.findById(user.employee_id, organization_id);
+      
+      if (!employee || employee.department_id !== parseInt(id)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view your own department."
+        });
+      }
+    }
+    // CEO and HR can view any department
 
     res.json({
       success: true,
@@ -66,10 +135,14 @@ export const getDepartmentById = async (req, res) => {
   }
 };
 
-// CREATE DEPARTMENT
+/**
+ * CREATE DEPARTMENT
+ * CEO and HR only
+ */
 export const createDepartment = async (req, res) => {
   try {
-    const { name, description, is_active } = req.body;
+    const { name, description, is_active, manager_id } = req.body;
+    const { organization_id } = req.user;
 
     // Validate required fields
     if (!name) {
@@ -87,7 +160,7 @@ export const createDepartment = async (req, res) => {
     }
 
     // Check if department with same name already exists
-    const existing = await Department.findByName(name.trim(), req.user.organization_id);
+    const existing = await Department.findByName(name.trim(), organization_id);
     if (existing) {
       return res.status(409).json({
         success: false,
@@ -95,15 +168,39 @@ export const createDepartment = async (req, res) => {
       });
     }
 
+    // Validate manager_id if provided
+    if (manager_id) {
+      const manager = await User.findById(manager_id);
+      if (!manager) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid manager ID. Manager not found."
+        });
+      }
+      if (manager.organization_id !== organization_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Manager must belong to the same organization."
+        });
+      }
+      if (manager.role !== 'manager') {
+        return res.status(400).json({
+          success: false,
+          error: "User must have 'manager' role to be assigned as department manager."
+        });
+      }
+    }
+
     const department = await Department.create({
       name: name.trim(),
       description: description ? description.trim() : null,
       is_active: is_active !== undefined ? is_active : true,
-      organization_id: req.user.organization_id
+      manager_id: manager_id || null,
+      organization_id
     });
 
     // Fetch the complete created department
-    const created = await Department.findById(department.id, req.user.organization_id);
+    const created = await Department.findById(department.id, organization_id);
 
     res.status(201).json({
       success: true,
@@ -125,11 +222,15 @@ export const createDepartment = async (req, res) => {
   }
 };
 
-// UPDATE DEPARTMENT
+/**
+ * UPDATE DEPARTMENT
+ * CEO and HR only
+ */
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, head_id, is_active } = req.body;
+    const { organization_id, role } = req.user;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -139,7 +240,7 @@ export const updateDepartment = async (req, res) => {
     }
 
     // Check if department exists
-    const existing = await Department.findById(id, req.user.organization_id);
+    const existing = await Department.findById(id, organization_id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -157,7 +258,7 @@ export const updateDepartment = async (req, res) => {
       }
 
       // Check if another department has this name
-      const duplicate = await Department.findByName(name.trim(), req.user.organization_id);
+      const duplicate = await Department.findByName(name.trim(), organization_id);
       if (duplicate && duplicate.id !== parseInt(id)) {
         return res.status(409).json({
           success: false,
@@ -178,9 +279,14 @@ export const updateDepartment = async (req, res) => {
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description ? description.trim() : null;
     if (head_id !== undefined) updateData.head_id = head_id;
-    if (is_active !== undefined) updateData.is_active = is_active;
+    
+    // Only CEO can change activation status via PUT
+    // Use PATCH /api/departments/:id/status for explicit status changes
+    if (is_active !== undefined && role === 'ceo') {
+      updateData.is_active = is_active;
+    }
 
-    const department = await Department.update(id, updateData, { new: true }, req.user.organization_id);
+    const department = await Department.update(id, updateData, { new: true }, organization_id);
 
     res.json({
       success: true,
@@ -202,10 +308,14 @@ export const updateDepartment = async (req, res) => {
   }
 };
 
-// DELETE DEPARTMENT
+/**
+ * DELETE DEPARTMENT
+ * CEO only
+ */
 export const deleteDepartment = async (req, res) => {
   try {
     const { id } = req.params;
+    const { organization_id } = req.user;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -215,7 +325,7 @@ export const deleteDepartment = async (req, res) => {
     }
 
     // Check if department exists
-    const existing = await Department.findById(id, req.user.organization_id);
+    const existing = await Department.findById(id, organization_id);
     if (!existing) {
       return res.status(404).json({
         success: false,
@@ -224,7 +334,7 @@ export const deleteDepartment = async (req, res) => {
     }
 
     // Check if department has employees
-    const employeeCount = await Department.getEmployeeCount(id, req.user.organization_id);
+    const employeeCount = await Department.getEmployeeCount(id, organization_id);
     if (employeeCount > 0) {
       return res.status(400).json({
         success: false,
@@ -233,7 +343,7 @@ export const deleteDepartment = async (req, res) => {
       });
     }
 
-    await Department.delete(id, req.user.organization_id);
+    await Department.delete(id, organization_id);
 
     res.json({
       success: true,
@@ -254,10 +364,16 @@ export const deleteDepartment = async (req, res) => {
   }
 };
 
-// GET DEPARTMENT EMPLOYEES
-export const getDepartmentEmployees = async (req, res) => {
+/**
+ * ASSIGN MANAGER TO DEPARTMENT
+ * CEO only
+ * PATCH /api/departments/:id/manager
+ */
+export const assignManager = async (req, res) => {
   try {
     const { id } = req.params;
+    const { manager_id } = req.body;
+    const { organization_id } = req.user;
 
     if (isNaN(id)) {
       return res.status(400).json({
@@ -267,7 +383,7 @@ export const getDepartmentEmployees = async (req, res) => {
     }
 
     // Check if department exists
-    const department = await Department.findById(id, req.user.organization_id);
+    const department = await Department.findById(id, organization_id);
     if (!department) {
       return res.status(404).json({
         success: false,
@@ -275,7 +391,177 @@ export const getDepartmentEmployees = async (req, res) => {
       });
     }
 
-    const employees = await Department.getEmployees(id, req.user.organization_id);
+    // Validate manager_id
+    if (manager_id !== null && manager_id !== undefined) {
+      if (isNaN(manager_id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid manager ID"
+        });
+      }
+
+      const manager = await User.findById(manager_id);
+      if (!manager) {
+        return res.status(404).json({
+          success: false,
+          error: "Manager not found"
+        });
+      }
+
+      if (manager.organization_id !== organization_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Manager must belong to the same organization"
+        });
+      }
+
+      if (manager.role !== 'manager') {
+        return res.status(400).json({
+          success: false,
+          error: "User must have 'manager' role to be assigned as department manager"
+        });
+      }
+    }
+
+    // Update department with new manager
+    const updated = await Department.update(
+      id, 
+      { manager_id: manager_id || null }, 
+      { new: true }, 
+      organization_id
+    );
+
+    res.json({
+      success: true,
+      data: updated,
+      message: manager_id 
+        ? "Manager assigned successfully" 
+        : "Manager removed successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * TOGGLE DEPARTMENT STATUS (ACTIVATE/DEACTIVATE)
+ * CEO only
+ * PATCH /api/departments/:id/status
+ */
+export const toggleStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const { organization_id } = req.user;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid department ID"
+      });
+    }
+
+    if (is_active === undefined || typeof is_active !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: "is_active field is required and must be a boolean"
+      });
+    }
+
+    // Check if department exists
+    const department = await Department.findById(id, organization_id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        error: "Department not found"
+      });
+    }
+
+    // Update department status
+    const updated = await Department.update(
+      id, 
+      { is_active }, 
+      { new: true }, 
+      organization_id
+    );
+
+    res.json({
+      success: true,
+      data: updated,
+      message: `Department ${is_active ? 'activated' : 'deactivated'} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * GET DEPARTMENT EMPLOYEES
+ * 
+ * Role-based access:
+ * - CEO/HR: View employees from any department
+ * - Manager: View employees from their assigned department only
+ * - Employee: View employees from their own department only
+ */
+export const getDepartmentEmployees = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, id: userId, organization_id } = req.user;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid department ID"
+      });
+    }
+
+    // Check if department exists
+    const department = await Department.findById(id, organization_id);
+    if (!department) {
+      return res.status(404).json({
+        success: false,
+        error: "Department not found"
+      });
+    }
+
+    // Check access permissions
+    if (role === 'manager') {
+      // Manager can only view employees from their assigned department
+      if (department.manager_id !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view employees from your assigned department."
+        });
+      }
+    } else if (role === 'employee') {
+      // Employee can only view employees from their own department
+      const user = await User.findById(userId);
+      if (!user || !user.employee_id) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. Employee record not found."
+        });
+      }
+      
+      const Employee = await import('../models/employeeModel.js');
+      const employee = await Employee.default.findById(user.employee_id, organization_id);
+      
+      if (!employee || employee.department_id !== parseInt(id)) {
+        return res.status(403).json({
+          success: false,
+          error: "Access denied. You can only view employees from your own department."
+        });
+      }
+    }
+    // CEO and HR can view employees from any department
+
+    const employees = await Department.getEmployees(id, organization_id);
 
     res.json({
       success: true,

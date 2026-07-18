@@ -252,9 +252,9 @@ const DashboardPage = () => {
     { label: 'AI Team Insights', icon: <Sparkles size={16} />, variant: 'secondary', path: '/employees' },
   ];
 
-  const quickActions = permissions.isAdmin ? adminActions : managerActions;
-  const pageTitle = permissions.isAdmin ? 'HR Dashboard' : 'Team Dashboard';
-  const pageSubtitle = permissions.isAdmin ? 'People operations overview' : 'Your team at a glance';
+  const quickActions = permissions.isHR ? adminActions : managerActions;
+  const pageTitle = permissions.isHR ? 'HR Dashboard' : 'Team Dashboard';
+  const pageSubtitle = permissions.isHR ? 'People operations overview' : 'Your team at a glance';
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10">
@@ -268,7 +268,7 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <DashboardCard
-          title={permissions.isAdmin ? 'Total Employees' : 'Team Size'}
+          title={permissions.isHR ? 'Total Employees' : 'Team Size'}
           value={overviewData.totalEmployees || 0}
           icon={<Users2 size={20} />}
           color="indigo"
@@ -297,7 +297,7 @@ const DashboardPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <ActivityList
-          title={permissions.isAdmin ? 'Recent Employees' : 'Recent Team Updates'}
+          title={permissions.isHR ? 'Recent Employees' : 'Recent Team Updates'}
           items={employeeItems.slice(0, 5)}
           emptyMessage="No recent employees"
         />
@@ -309,7 +309,7 @@ const DashboardPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {permissions.isAdmin ? (
+        {permissions.isHR ? (
           <ActivityList
             title="Recent Departments"
             items={departmentItems.slice(0, 5)}

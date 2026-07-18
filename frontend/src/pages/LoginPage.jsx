@@ -1,23 +1,25 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Checkbox from '../components/common/Checkbox';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: '',
+    rememberMe: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
     // Clear error when user types
     if (error) setError('');
@@ -29,9 +31,29 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      await login(formData.username, formData.password);
+      const result = await login(formData.email, formData.password, formData.rememberMe);
+      
+      // Check if CEO needs to complete setup
+      if (result.user.role === 'CEO' || result.user.role === 'ceo') {
+        try {
+          const setupStatus = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'}/organization/setup-status`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }).then(r => r.json());
+          
+          if (!setupStatus.setupCompleted) {
+            // Redirect to setup wizard
+            navigate('/setup', { replace: true });
+            return;
+          }
+        } catch (err) {
+          console.error('Error checking setup status:', err);
+        }
+      }
+      
       // Redirect to dashboard after successful login
-      navigate('/dashboard', { replace: true });
+      navigate(result.redirectTo || '/dashboard', { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed. Please try again.');
     } finally {
@@ -48,6 +70,12 @@ const LoginPage = () => {
 
       {/* Login Card */}
       <div className="relative w-full max-w-md">
+        <Link
+          to="/"
+          className="flex items-center gap-1.5 text-white/40 hover:text-white text-sm mb-4"
+        >
+          <span className="text-base leading-none">←</span> Back to Home
+        </Link>
         <div className="bg-[#0f1117] border border-white/10 rounded-2xl shadow-2xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
@@ -69,20 +97,20 @@ const LoginPage = () => {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
+            {/* Email */}
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 tracking-widest uppercase">
-                Username
+                Email
               </label>
               <input
-                type="text"
-                name="username"
-                value={formData.username}
+                type="email"
+                name="email"
+                value={formData.email}
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 transition"
-                placeholder="Enter your username"
+                placeholder="you@company.com"
                 required
-                autoComplete="username"
+                autoComplete="email"
                 disabled={loading}
               />
             </div>
@@ -103,6 +131,23 @@ const LoginPage = () => {
                 autoComplete="current-password"
                 disabled={loading}
               />
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <Checkbox
+                label="Remember me"
+                checked={formData.rememberMe}
+                onChange={handleChange}
+                name="rememberMe"
+              />
+              
+              <Link 
+                to="/forgot-password"
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
 
             {/* Submit Button */}

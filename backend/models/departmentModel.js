@@ -86,11 +86,11 @@ const Department = {
    */
   create: async (data) => {
     try {
-      const { name, description, is_active = true, organization_id } = data;
+      const { name, description, is_active = true, manager_id, organization_id } = data;
       
       const [result] = await pool.execute(
-        'INSERT INTO departments (name, description, is_active, organization_id) VALUES (?, ?, ?, ?)',
-        [name, description || null, is_active, organization_id]
+        'INSERT INTO departments (name, description, is_active, manager_id, organization_id) VALUES (?, ?, ?, ?, ?)',
+        [name, description || null, is_active, manager_id || null, organization_id]
       );
 
       return {
@@ -98,6 +98,7 @@ const Department = {
         name,
         description: description || null,
         is_active,
+        manager_id: manager_id || null,
         organization_id
       };
     } catch (error) {
@@ -118,7 +119,7 @@ const Department = {
    */
   update: async (id, data, options = {}, organization_id) => {
     try {
-      const { name, description, head_id, is_active } = data;
+      const { name, description, head_id, manager_id, is_active } = data;
       
       // Build dynamic update query
       const updates = [];
@@ -135,6 +136,10 @@ const Department = {
       if (head_id !== undefined) {
         updates.push('head_id = ?');
         params.push(head_id);
+      }
+      if (manager_id !== undefined) {
+        updates.push('manager_id = ?');
+        params.push(manager_id);
       }
       if (is_active !== undefined) {
         updates.push('is_active = ?');
