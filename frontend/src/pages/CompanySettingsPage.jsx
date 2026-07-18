@@ -364,7 +364,7 @@ const CompanySettingsPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto px-6 py-10 space-y-6">
       <PageHeader
         title="Company Settings"
         subtitle={isCEO 
@@ -421,7 +421,7 @@ const CompanySettingsPage = () => {
           </div>
 
           {/* Tab Content */}
-          <div className="p-8">
+          <div className="p-5 sm:p-8">
             {renderTabContent()}
           </div>
         </div>

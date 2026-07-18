@@ -173,7 +173,7 @@ const CompanySetupWizard = () => {
             </div>
           </div>
           
-          <h1 className="text-4xl font-bold tracking-tight mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
             Welcome to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
               Employee Manager
