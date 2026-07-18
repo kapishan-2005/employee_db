@@ -36,7 +36,7 @@ class ErrorBoundary extends Component {
             <p className="text-white/60 mb-6">
               An unexpected error occurred. Please try refreshing the page.
             </p>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-left">
                 <p className="text-xs text-red-400 font-mono break-all">
                   {this.state.error.toString()}

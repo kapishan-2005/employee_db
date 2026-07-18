@@ -26,8 +26,6 @@ const PerformanceAnalysis = ({ employeeId }) => {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     aiService
       .analyzePerformance(employeeId)
       .then((res) => {

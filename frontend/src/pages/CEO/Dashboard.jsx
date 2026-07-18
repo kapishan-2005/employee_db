@@ -12,18 +12,6 @@ import RecentActivities from '../../components/dashboard/RecentActivities';
 import PendingInvitationsTable from '../../components/dashboard/PendingInvitationsTable';
 import QuickActions from '../../components/dashboard/QuickActions';
 
-const severityStyles = {
-  info: 'border-sky-500/20 bg-sky-500/5 text-sky-300',
-  warning: 'border-orange-500/20 bg-orange-500/5 text-orange-300',
-  critical: 'border-red-500/20 bg-red-500/5 text-red-300',
-};
-
-const severityIcon = {
-  info: Info,
-  warning: AlertTriangle,
-  critical: AlertOctagon,
-};
-
 const CEODashboard = () => {
   // Fetch complete CEO dashboard data
   const fetchCEODashboard = useCallback(async () => {

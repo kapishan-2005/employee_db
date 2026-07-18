@@ -212,7 +212,7 @@ const AttendancePage = () => {
   }, [filters]);
 
   const { data: employees } = useFetch(fetchEmployees, []);
-  const { data: attendance, setData: setAttendance, loading, refetch } = useFetch(fetchAttendance, [filters]);
+  const { data: attendance, loading, refetch } = useFetch(fetchAttendance, [filters]);
 
   const handleCheckIn = async (form) => {
     setSaving(true);

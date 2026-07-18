@@ -32,7 +32,7 @@ const ForgotPasswordPage = () => {
         console.log('Password Reset Link:', response.resetLink);
         showToast('Password reset link generated (check console in dev mode)', 'success');
       }
-    } catch (error) {
+    } catch {
       // Don't show error to user (security - don't reveal if email exists)
       setSubmitted(true);
     } finally {

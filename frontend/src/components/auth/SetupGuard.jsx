@@ -25,12 +25,10 @@ const SetupGuard = ({ children, requireSetup = false, requireCompleted = false }
 
   useEffect(() => {
     if (!needsCheck) {
-      setChecking(false);
       return;
     }
 
     let cancelled = false;
-    setChecking(true);
 
     api
       .get(endpoints.organization.setupStatus)

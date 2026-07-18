@@ -53,7 +53,7 @@ const RecentActivities = ({ activities = [] }) => {
       if (typeof details === 'string') {
         details = JSON.parse(details);
       }
-    } catch (e) {
+    } catch {
       // Keep as string if not JSON
     }
 

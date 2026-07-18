@@ -4,7 +4,7 @@
  * Handles all dashboard-related API calls
  */
 
-import { api, endpoints } from './api';
+import { api } from './api';
 
 // Add dashboard endpoints
 const dashboardEndpoints = {

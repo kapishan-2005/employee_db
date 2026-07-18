@@ -257,7 +257,7 @@ const DepartmentsPage = () => {
     return response.data || [];
   }, []);
 
-  const { data: departments, setData: setDepartments, loading, refetch } = useFetch(fetchDepartments);
+  const { data: departments, setData: setDepartments, loading } = useFetch(fetchDepartments);
   const { search, setSearch, filtered } = useSearch(departments, ['name', 'description']);
 
   const activeDepts = departments.filter((d) => d.is_active).length;
