@@ -1,5 +1,6 @@
 import Attendance from "../models/attendanceModel.js";
 import Employee from "../models/employeeModel.js";
+import { pool } from "../config/db.js";
 
 // Validation helpers
 const validateStatus = (status) => {
@@ -63,6 +64,20 @@ export const getAllAttendance = async (req, res) => {
     // RBAC: If user is employee role, only show their own attendance
     if (req.user && req.user.role === 'employee' && req.user.employee_id) {
       filters.employee_id = req.user.employee_id;
+    }
+
+    // RBAC: Managers only see attendance for departments they manage
+    if (req.user && req.user.role === 'manager') {
+      const [managedDepts] = await pool.execute(
+        'SELECT id FROM departments WHERE manager_id = ? AND organization_id = ?',
+        [req.user.id, req.user.organization_id]
+      );
+      filters.department_ids = managedDepts.map((d) => d.id);
+
+      // A manager with no managed departments (not yet assigned) sees nothing
+      if (filters.department_ids.length === 0) {
+        return res.json({ success: true, data: [], count: 0 });
+      }
     }
 
     const records = await Attendance.findAll(filters);
@@ -348,6 +363,27 @@ export const getAttendanceReport = async (req, res) => {
     if (end_date) filters.end_date = end_date;
     if (status) filters.status = status;
     if (department_id) filters.department_id = department_id;
+
+    // RBAC: Managers only see reports for departments they manage
+    if (req.user && req.user.role === 'manager') {
+      const [managedDepts] = await pool.execute(
+        'SELECT id FROM departments WHERE manager_id = ? AND organization_id = ?',
+        [req.user.id, req.user.organization_id]
+      );
+      const managedIds = managedDepts.map((d) => d.id);
+
+      if (managedIds.length === 0) {
+        return res.json({ success: true, data: { statistics: {}, daily_summary: [], records: [] } });
+      }
+
+      // If manager requested a specific department, only allow it if they manage it
+      if (department_id && !managedIds.includes(parseInt(department_id))) {
+        return res.status(403).json({ success: false, error: 'You do not manage this department' });
+      }
+
+      filters.department_ids = department_id ? [parseInt(department_id)] : managedIds;
+      delete filters.department_id;
+    }
 
     const report = await Attendance.getReport(filters);
 

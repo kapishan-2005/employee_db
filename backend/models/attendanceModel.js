@@ -74,6 +74,12 @@ const Attendance = {
         params.push(filters.department_id);
       }
 
+      // Filter by multiple departments (used for manager-scoped views)
+      if (filters.department_ids && filters.department_ids.length > 0) {
+        conditions.push(`e.department_id IN (${filters.department_ids.map(() => '?').join(',')})`);
+        params.push(...filters.department_ids);
+      }
+
       if (conditions.length > 0) {
         query += ' WHERE ' + conditions.join(' AND ');
       }
