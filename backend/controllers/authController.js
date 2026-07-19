@@ -469,8 +469,13 @@ export const login = async (req, res) => {
 
     console.log('🔐 Login attempt:', { email, hasPassword: !!password });
 
-    // Find user by email
+    // Find user by email first, then fall back to username (some accounts,
+    // like CEO/HR/Manager accounts created via Manage Users, are commonly
+    // logged into by username)
     let user = await User.findByEmailWithPassword(email);
+    if (!user) {
+      user = await User.findByUsername(email);
+    }
     
     if (!user) {
       console.log('❌ User not found:', email);

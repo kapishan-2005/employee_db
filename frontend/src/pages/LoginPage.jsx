@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Checkbox from '../components/common/Checkbox';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -10,7 +9,6 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,7 +29,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const result = await login(formData.email, formData.password, formData.rememberMe);
+      const result = await login(formData.email, formData.password);
       
       // Check if CEO needs to complete setup
       if (result.user.role === 'CEO' || result.user.role === 'ceo') {
@@ -100,10 +98,10 @@ const LoginPage = () => {
             {/* Email */}
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5 tracking-widest uppercase">
-                Email
+                Email or Username
               </label>
               <input
-                type="email"
+                type="text"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
@@ -133,15 +131,8 @@ const LoginPage = () => {
               />
             </div>
 
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <Checkbox
-                label="Remember me"
-                checked={formData.rememberMe}
-                onChange={handleChange}
-                name="rememberMe"
-              />
-              
+            {/* Forgot Password */}
+            <div className="flex items-center justify-end">
               <Link 
                 to="/forgot-password"
                 className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"

@@ -45,14 +45,13 @@ export const AuthProvider = ({ children }) => {
   /**
    * Login user
    */
-  const login = async (email, password, rememberMe = false) => {
+  const login = async (email, password) => {
     try {
       console.log('[AuthContext] Login attempt:', { email });
       
       const response = await api.post(endpoints.auth.login, {
         email,
         password,
-        rememberMe,
       });
 
       console.log('[AuthContext] Login response:', response);
